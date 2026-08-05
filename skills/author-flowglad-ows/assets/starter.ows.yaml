@@ -1,0 +1,66 @@
+document:
+  dsl: '1.0.3'
+  namespace: replace-me
+  name: replace-me
+  version: '1.0.0'
+  metadata:
+    fg:
+      profile: https://flowglad.com/ows/profiles/automation/v1
+      requiredExtensions:
+        - https://flowglad.com/ows/extensions/capabilities/v1
+        - https://flowglad.com/ows/extensions/runtime-profile/v1
+
+use:
+  catalogs:
+    flowglad:
+      endpoint:
+        uri: https://flowglad.com/ows/catalogs/automation/v1
+
+input:
+  schema:
+    format: jsonschema:2020-12
+    document:
+      type: object
+      additionalProperties: false
+      required: [value]
+      properties:
+        value: {type: string}
+
+do:
+  - process-value:
+      input:
+        from: '${ . }'
+      call: code:1.0.0@flowglad
+      with:
+        fg:
+          resource:
+            kind: space-file
+            spaceId: spc_replace_me
+            path: automations/process.py
+            digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          runtime:
+            language: python
+            version: '3.11'
+            memoryMb: 128
+      timeout:
+        after: PT30S
+      output:
+        schema:
+          format: jsonschema:2020-12
+          document:
+            type: object
+            additionalProperties: false
+            required: [result]
+            properties:
+              result: {type: string}
+
+output:
+  as: '${ . }'
+  schema:
+    format: jsonschema:2020-12
+    document:
+      type: object
+      additionalProperties: false
+      required: [result]
+      properties:
+        result: {type: string}

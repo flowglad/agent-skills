@@ -1,0 +1,158 @@
+document:
+  dsl: '1.0.3'
+  namespace: flowglad-evals
+  name: yooz-bounded-document-number
+  version: '1.0.0'
+  title: Yooz bounded document-number pipeline
+  summary: >-
+    Canonical OWS program for the representative code, structured-inference,
+    and terminal command-DAG pipeline. OWS owns dataflow and schemas; the
+    Flowglad catalog arguments contain only runtime-specific declarations.
+  metadata:
+    fg:
+      profile: https://flowglad.com/ows/profiles/automation/v1
+      requiredExtensions:
+        - https://flowglad.com/ows/extensions/capabilities/v1
+        - https://flowglad.com/ows/extensions/runtime-profile/v1
+        - https://flowglad.com/ows/extensions/artifacts/v1
+        - https://flowglad.com/ows/extensions/terminal-command-dag/v1
+
+use:
+  catalogs:
+    flowglad:
+      endpoint:
+        uri: https://flowglad.com/ows/catalogs/automation/v1
+
+input:
+  schema:
+    format: jsonschema:2020-12
+    document:
+      type: object
+      additionalProperties: false
+      required:
+        - canonical_connection_id
+        - connection_id
+        - invoice_pdf_sha256
+        - org_units_response
+        - document_grid_response
+        - invoice_pdf
+      properties:
+        canonical_connection_id: {type: string}
+        connection_id: {type: string}
+        invoice_pdf_sha256:
+          type: string
+          pattern: '^sha256:[a-f0-9]{64}$'
+        org_units_response: {type: object}
+        document_grid_response: {type: array}
+        invoice_pdf:
+          type: object
+          additionalProperties: false
+          required: [filename, base64]
+          properties:
+            filename: {type: string}
+            base64: {type: string}
+
+do:
+  - normalize-invoice-context:
+      input:
+        from: '${ . }'
+      call: code:1.0.0@flowglad
+      with:
+        fg:
+          resource:
+            kind: space-file
+            spaceId: spc_eval_yooz_two_proposal_attachment_plan
+            path: yooz_ows_v1.py
+            digest: sha256:c3577ca53b2e8c998dab234af30e3bc679c12ee07fb0fa9200aa1bdff11bc456
+          runtime:
+            language: python
+            version: '3.11'
+            memoryMb: 128
+          produces:
+            - name: normalized-context
+              as: normalized_context
+              mediaType: application/json
+              maxBytes: 1048576
+              path: normalized-context.json
+      timeout:
+        after: PT10S
+      output:
+        schema:
+          format: jsonschema:2020-12
+          document:
+            type: object
+            additionalProperties: false
+            required: [invoice_text]
+            properties:
+              invoice_text: {type: string}
+      export:
+        as: '${ $context + { normalized: . } }'
+
+  - extract-document-number:
+      input:
+        from: '${ $context.normalized }'
+      call: inference:1.0.0@flowglad
+      with:
+        fg:
+          profile:
+            id: yooz_document_number
+            provider: openai
+            model: gpt-pinned
+            systemPrompt: >-
+              Use the supplied invoice context. Return only the document number
+              visible in the invoice.
+            instructions: >-
+              Return document_number using only the supplied invocation input.
+            maxOutputTokens: 1024
+            maxResultBytes: 4096
+      timeout:
+        after: PT60S
+      output:
+        schema:
+          format: jsonschema:2020-12
+          document:
+            type: object
+            additionalProperties: false
+            required: [document_number]
+            properties:
+              document_number: {type: string}
+      export:
+        as: '${ $context + { inference: . } }'
+
+  - build-attachment-dag:
+      input:
+        from: '${ $context.inference }'
+      call: code:1.0.0@flowglad
+      with:
+        fg:
+          resource:
+            kind: space-file
+            spaceId: spc_eval_yooz_two_proposal_attachment_plan
+            path: yooz_ows_v1.py
+            digest: sha256:c3577ca53b2e8c998dab234af30e3bc679c12ee07fb0fa9200aa1bdff11bc456
+          runtime:
+            language: python
+            version: '3.11'
+            memoryMb: 128
+          consumes:
+            - name: normalized-context
+              as: normalized_context
+              mediaType: application/json
+          terminal:
+            kind: command-dag
+      timeout:
+        after: PT10S
+      output:
+        schema:
+          format: jsonschema:2020-12
+          document:
+            type: object
+      export:
+        as: '${ $context + { terminalDag: . } }'
+
+output:
+  as: '${ $context.terminalDag }'
+  schema:
+    format: jsonschema:2020-12
+    document:
+      type: object

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Author Flowglad OWS"
+  short_description: "Create valid Flowglad automation programs"
+  default_prompt: "Use $author-flowglad-ows to author a Flowglad OWS automation program."
