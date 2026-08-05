@@ -1,0 +1,108 @@
+document:
+  dsl: '1.0.3'
+  namespace: flowglad-evals
+  name: mock-bank-browser-statement
+  version: '1.0.0'
+  title: Mock Bank browser statement pipeline
+  summary: >-
+    Canonical OWS program for browser-agent to PDF artifact to code dataflow.
+    The PDF declaration is a Flowglad artifact sidecar; OWS owns the structured
+    value flow between the two tasks.
+  metadata:
+    fg:
+      profile: https://flowglad.com/ows/profiles/automation/v1
+      requiredExtensions:
+        - https://flowglad.com/ows/extensions/capabilities/v1
+        - https://flowglad.com/ows/extensions/runtime-profile/v1
+        - https://flowglad.com/ows/extensions/artifacts/v1
+        - https://flowglad.com/ows/extensions/terminal-command-dag/v1
+
+use:
+  catalogs:
+    flowglad:
+      endpoint:
+        uri: https://flowglad.com/ows/catalogs/automation/v1
+
+input:
+  schema:
+    format: jsonschema:2020-12
+    document:
+      type: object
+      additionalProperties: false
+      maxProperties: 0
+
+do:
+  - download-statement:
+      input:
+        from: '${ . }'
+      call: browser-agent:1.0.0@flowglad
+      with:
+        fg:
+          profile:
+            id: mock_bank_browser_profile
+            targetOrigin: https://mock-bank.flowglad.com
+            browserAuthDataSourceId: dsrc_mock_bank
+            promptIdentity: mock-bank/login@v1
+            vendorSkillIdentity: mock-bank/extract_statement@v1
+            toolSetIdentity: web-agent-tools-v1
+            modelRoute: web-agent
+            maxSteps: 20
+          produces:
+            - name: statement-pdf
+              as: statement_pdf
+              mediaType: application/pdf
+              maxBytes: 10000
+              path: statement/flowglad-bank-statement.pdf
+              digest: sha256:87901bdd6fc868d13e52051092e1e0411b865390b71903256370e679062e91f4
+      timeout:
+        after: PT60S
+      output:
+        schema:
+          format: jsonschema:2020-12
+          document:
+            type: object
+            additionalProperties: false
+            required: [statementReady]
+            properties:
+              statementReady: {type: boolean}
+      export:
+        as: '${ $context + { browser: . } }'
+
+  - verify-statement:
+      input:
+        from: '${ $context.browser }'
+      call: code:1.0.0@flowglad
+      with:
+        fg:
+          resource:
+            kind: space-file
+            spaceId: spc_eval_yooz_two_proposal_attachment_plan
+            path: verify_mock_bank_ows_v1.py
+            digest: sha256:ba6008ada9caa2e2f8c8cc82fc68590907e0b43395e178b44db1110cdc6ede71
+          runtime:
+            language: python
+            version: '3.11'
+            memoryMb: 128
+          consumes:
+            - name: statement-pdf
+              as: statement_pdf
+              mediaType: application/pdf
+              digest: sha256:87901bdd6fc868d13e52051092e1e0411b865390b71903256370e679062e91f4
+          terminal:
+            kind: command-dag
+      timeout:
+        after: PT10S
+      output:
+        schema:
+          format: jsonschema:2020-12
+          document:
+            type: object
+      export:
+        as: '${ $context + { terminalDag: . } }'
+
+output:
+  as: '${ $context.terminalDag }'
+  schema:
+    format: jsonschema:2020-12
+    document:
+      type: object
