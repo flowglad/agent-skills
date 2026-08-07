@@ -10,8 +10,9 @@ Create the canonical OWS source for a Flowglad automation.
 ## Authoring process
 
 1. Gather the intended workflow inputs, outputs, tasks, dataflow, artifacts, external systems, and side effects.
-2. Read `references/AUTHORING.md` completely before writing or revising a program. Treat it as the authoritative Flowglad profile reference.
+2. Read `references/AUTHORING.md` completely before writing or revising a program. Treat it as the authoritative Flowglad profile reference. When the program uses a code call, also read `references/CODE_ABI.md` completely before writing or revising its Python resource.
 3. Inspect the closest complete example when the workflow needs one:
+   - Read `references/invoice-reconciliation.ows.yaml` for authenticated connection actions, task-input injection, evidence artifacts, and a multi-command terminal DAG.
    - Read `references/yooz-bounded-document-number.ows.yaml` for code, inference, artifacts, and a terminal command-DAG proposal.
    - Read `references/mock-bank-browser-statement.ows.yaml` for a browser-agent call, a PDF artifact, and a code consumer.
 4. Copy `assets/starter.ows.yaml` when starting a simple code workflow, then replace every placeholder with an exact value.
@@ -38,7 +39,7 @@ Create the canonical OWS source for a Flowglad automation.
 - Use Python 3.11 for code calls.
 - Do not generate legacy v0 definitions, `StepSpec[]`, or runner-specific intermediate representations.
 - Do not emulate unsupported loops, retries, waits, forks, schedules, composite tasks, third-party catalogs, or generic `run` tasks.
-- Do not claim that successful compilation means the workflow can execute.
+- Do not claim that successful compilation authorizes activation or execution.
 
 ## Handoff
 

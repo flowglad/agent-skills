@@ -1,8 +1,8 @@
 # Authoring Flowglad OWS programs
 
-> Public reference snapshot for `@fg/workflow-compiler` 0.1.0 and Flowglad
-> automation profile v1. Keep this file synchronized with the compiler-owned
-> authoring reference before publishing changes to the skill.
+> Generated public reference for `@fg/workflow-compiler` 0.1.0 and
+> Flowglad automation profile v1. Update the compiler-owned authoring reference;
+> do not edit this generated file directly.
 
 ## Contents
 
@@ -15,7 +15,7 @@
 - [Inference calls](#inference-calls)
 - [Browser-agent calls](#browser-agent-calls)
 - [Artifacts](#artifacts)
-- [Exact authenticated HTTP authority](#exact-authenticated-http-authority)
+- [Authenticated connection actions](#authenticated-connection-actions)
 - [Terminal command DAGs](#terminal-command-dags)
 - [Capabilities are derived](#capabilities-are-derived)
 - [Source identity, publication, and compatibility](#source-identity-publication-and-compatibility)
@@ -28,13 +28,14 @@ that opts into Flowglad profile v1 and calls the versioned Flowglad task
 catalog.
 
 Use this guide to write the canonical workflow document. The executable source
-of truth is the document itself—not a generated v0 definition, `StepSpec[]`, or
-runner-specific intermediate representation.
+of truth is the document itself, not a runner-specific intermediate
+representation.
 
-> **Execution status:** Flowglad can validate and publish these documents as
-> immutable, inactive revisions. They cannot be activated or executed until the
-> standalone OWS executor is delivered. Compiler validity therefore does not
-> imply current executability.
+> **Execution status:** Flowglad validates and publishes these documents as
+> immutable revisions for the standalone OWS executor. Activation verifies the
+> exact bundle, closure, digests, and runtime identity. Routing is behind
+> the default-off, organization-allowlisted `schematized-automation-runtime`
+> feature flag, so compiler validity alone does not authorize execution.
 
 The normative upstream language is
 [OWS 1.0.3](https://open-workflow-specification.org/). This guide documents the
@@ -85,6 +86,7 @@ do:
             spaceId: spc_replace_me
             path: automations/normalize.py
             digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          entrypoint: normalize
           runtime:
             language: python
             version: '3.11'
@@ -130,9 +132,10 @@ behavior that OWS does not define.
 | Conditional execution | Standard OWS task `if` |
 | Task timeout | Standard OWS task `timeout` |
 | Python or Skill resource identity | `with.fg.resource` on a Flowglad code call |
+| Python function selection | `with.fg.entrypoint` on a Flowglad code call |
 | Model or browser runtime profile | `with.fg.profile` |
 | File/JSON artifact identity and integrity | `with.fg.produces` and `with.fg.consumes` |
-| Exact authenticated HTTP authority | `with.fg.exactAuthentication` on a code call |
+| Authenticated connection actions | `with.fg.exactAuthentication` on a code call |
 | Approval-bound terminal command proposal | `with.fg.terminal` on the final code call |
 | Security capabilities | Do not author them; the compiler derives them |
 
@@ -193,14 +196,14 @@ standard fields:
 - `metadata`
 
 Every task must declare a standard OWS timeout. `metadata` is descriptive and
-never grants authority.
+never creates a capability grant.
 
 Profile v1 rejects explicit `then` transitions, reusable functions, OWS task
 extensions, third-party catalogs, schedules, composite tasks, forks, loops,
 switches, retries, waits, event tasks, and generic `run` tasks. This is a
-profile restriction, not a claim that OWS lacks those features. Supporting one
-later requires a new profile/compiler version; authors must not emulate it with
-an unrecognized `fg` key.
+profile restriction, not a claim that OWS lacks those features. Profile v1 does
+not accept them, and authors must not emulate them with an unrecognized `fg`
+key.
 
 ## Dataflow and conditions
 
@@ -227,18 +230,24 @@ output:
   as: '${ . }'
 ```
 
-The future executor owns conformance to OWS expression and condition semantics.
-The compiler currently proves that the document and supported profile are
+The standalone executor owns conformance to OWS expression and condition
+semantics. The compiler proves that the document and supported profile are
 valid; it does not execute expressions.
 
 Canonical OWS tasks return their declared value directly. Do not wrap task
-results in the legacy `continue-bail-v0` envelope. Use OWS failure, `if`, and
-dataflow semantics. If execution work later demonstrates a missing outcome
-concept, it will be introduced only through a new profile version.
+results in an application-specific control envelope. Use OWS failure, `if`, and
+dataflow semantics. Any additional outcome convention requires a new profile
+version.
 
 ## Code calls
 
 Call `code:1.0.0@flowglad` for a pinned Python program.
+
+The workflow document defines the direct OWS task value and schemas. The
+executor's `flowglad.entrypoints` module is a Flowglad adapter convention, not
+a second workflow language or result envelope. Code authors use the
+[standalone executor code ABI](./CODE_ABI.md) for function
+returns, runtime values, artifact slots, logging, and connection actions.
 
 ```yaml
 call: code:1.0.0@flowglad
@@ -249,6 +258,7 @@ with:
       spaceId: spc_123
       path: automations/reconcile.py
       digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    entrypoint: reconcile
     runtime:
       language: python
       version: '3.11'
@@ -285,10 +295,53 @@ the verified revision manifest.
 The only profile-v1 runtime is Python 3.11. `memoryMb` is an integer from 64
 through 4096.
 
-The OWS executor's code-process ABI is a Milestone 4 contract. OWS revisions are
-inactive until that ABI exists. Authors may rely on the established direction
-that structured files—not stdout—carry task results and that stdout/stderr are
-logs, but must not infer a new OWS result envelope from the current v0 runner.
+Each code task declares one public top-level Python function through
+`entrypoint`. That function uses `@entrypoint` from `flowglad.entrypoints` and
+declares injected task input and artifact dependencies with annotated
+parameters. Publication statically reads the selected declaration from the
+exact pinned bytes and checks its artifact parameters against `consumes` and
+`produces`. The executor imports the sealed resource, binds admitted values,
+and serializes the function's JSON-compatible return through the bounded
+stdout process channel. The function is synchronous. Author code sends
+diagnostics only to stderr; there is no result envelope or result file.
+
+```python
+from flowglad.entrypoints import ArtifactInput, Input, entrypoint
+
+
+@entrypoint
+def reconcile(invoice_id: Input, invoice_pdf: ArtifactInput) -> dict[str, object]:
+    return {"invoice_id": invoice_id, "invoice_size": invoice_pdf.size_bytes}
+```
+
+`Input` binds the task-input object field with the same name. `TaskInput` binds
+the complete task input. `ArtifactInput` and `ArtifactOutput` bind the matching
+task-local aliases. Artifact parameters match the workflow declaration
+exactly; the decorator does not add a capability. The
+[code ABI](./CODE_ABI.md) defines the declaration grammar
+and runtime failures.
+
+### Code validation responsibilities
+
+Authors put every structural constraint that JSON Schema can express in the
+task input/output schemas, connection action parameter/result schemas, and
+artifact declarations. The executor enforces those declarations at runtime, so
+Python consumes admitted values directly instead of repeating defensive shape
+checks.
+
+| Executor owns | Python resource owns |
+| --- | --- |
+| Constructs the task-scoped modules and injects declared dependencies from sealed, admitted runtime state. | Declares only the dependencies the selected function uses and implements the task behavior. |
+| Validates the task input before process launch and the function return against the task's OWS schemas. | Implements the transformation and checks semantic or cross-field invariants that the schemas do not express. |
+| Admits consumed artifacts and enforces path containment, media type, size, and digest; verifies every produced slot after exit. | Uses the declared artifact objects and checks domain meaning inside file content when the workflow requires it. |
+| Binds each `flowglad.connections` alias to its sealed connection actions, validates action parameters and host results, and enforces call budgets. | Chooses which declared actions to call and checks business meaning, match cardinality, consistency, and pagination progress or completeness when action schemas do not express them. |
+| Invokes the declared function, serializes one bounded strict JSON value, requires exit status zero, supervises timeout/cancellation, and validates a declared terminal command DAG. | Returns one JSON-compatible task value, sends diagnostics to stderr, and raises when a business constraint fails. |
+
+Python does not read or revalidate the internal manifest, connection alias
+binding, artifact integrity metadata, or shapes already represented by a
+declared schema. When a load-bearing invariant fits JSON Schema, the author
+declares it there. When it does not, the resource checks it explicitly and
+fails with a safe diagnostic.
 
 ## Inference calls
 
@@ -344,70 +397,98 @@ is an integer from 1 through 100.
 
 Standard OWS fields carry JSON task values. Flowglad artifacts are the separate
 file/large-value data plane. Declare an artifact once on its producer and bind
-it by name on later consumers.
+it by name on downstream consumers.
 
 ```yaml
 # Producer
 produces:
   - name: statement-pdf
-    as: statement_pdf
     mediaType: application/pdf
     maxBytes: 10000000
-    path: statements/latest.pdf
 
-# A later consumer
+# A downstream consumer
 consumes:
-  - name: statement-pdf
-    as: bank_statement
-    mediaType: application/pdf
+  - statement-pdf
 ```
 
 The fields have distinct purposes:
 
 | Field | Meaning |
 | --- | --- |
-| `name` | Workflow-wide artifact identity. A consumer's `name` must match exactly one earlier producer. |
-| `as` | Task-local programmatic name. It becomes the key in that task's artifact input/output manifest. |
-| `path` | Producer-owned normalized relative output path. Open file bytes using the runtime manifest's path, not `as`. |
+| `name` | Workflow-wide artifact identity. A consumer's `name` must match exactly one upstream producer. |
+| `as` | Optional task-local Python name. It defaults to `name` with hyphens replaced by underscores. |
+| `fileName` | Optional browser-download basename. The compiler otherwise derives a filename from `name` and `mediaType`. |
 | `mediaType` | Required producer media type; an optional consumer assertion that must match. |
-| `maxBytes` | Positive producer-side bound, at most 100 MiB. |
+| `maxBytes` | Optional positive producer-side bound, at most 100 MiB. It defaults to 10 MiB. |
 | `digest` | Optional SHA-256 assertion. A consumer assertion must match the producer declaration. |
 
-In particular, `as` is not a filesystem address. A consuming script finds the
-artifact manifest entry by `as`, then opens the exact path supplied in that
-entry. Different consumers may choose different local aliases for the same
-workflow artifact.
+The compiler generates the physical path. `fileName` identifies a provider
+download when a browser task needs one; it does not grant access to an authored
+filesystem location. A consumer uses the string shorthand above when the
+default alias is sufficient. The object form supplies an explicit alias or an
+additional media-type or digest assertion:
 
-Within each task, consumed names, consumed aliases, produced names, and produced
-aliases must be unique. An artifact must be produced before it is consumed, and
-two tasks cannot produce the same workflow artifact name. Omit `digest` for
-dynamic output whose bytes are not known until execution; the executor computes
-and records the actual digest.
+```yaml
+consumes:
+  - name: statement-pdf
+    as: bank_statement
+```
 
-## Exact authenticated HTTP authority
+Python declares the aliases on the selected entrypoint:
 
-Only a code call may declare exact authenticated access. Each authority grants
-one bounded provider operation; it is not a general-purpose authenticated fetch
-capability.
+```python
+from flowglad.entrypoints import ArtifactInput, ArtifactOutput, entrypoint
+
+
+@entrypoint
+def normalize(
+    bank_statement: ArtifactInput,
+    normalized_context: ArtifactOutput,
+) -> dict[str, int]:
+    statement_bytes = bank_statement.read_bytes()
+    normalized_context.write_json({"statement_size": len(statement_bytes)})
+    return {"statement_size": len(statement_bytes)}
+```
+
+Consumed artifacts expose `path`, `media_type`, `size_bytes`, `digest`,
+`open()`, `read_bytes()`, `read_text()`, and `read_json()`. Produced artifacts
+expose `path`, `media_type`, `max_bytes`, `expected_digest`, `open()`,
+`write_bytes()`, `write_text()`, and `write_json()`. JSON helpers require
+`application/json`; text helpers use UTF-8. Input objects do not expose write
+methods, and output objects do not expose read methods.
+
+Within each task, consumed names, produced names, and all aliases are unique. An
+artifact must be produced before it is consumed, and two tasks cannot produce
+the same workflow artifact name. Omit `digest` for dynamic output with
+execution-time bytes; the executor computes and records the actual digest.
+
+## Authenticated connection actions
+
+Only a code call may declare exact authenticated access. Each connection binds
+an immutable connection ID to a task-local Python alias and a bounded set of
+named provider actions. The declaration is not a general-purpose authenticated
+fetch capability.
 
 ```yaml
 exactAuthentication:
-  authorities:
-    - id: get_invoice
+  connections:
+    - connectionId: dsrc_123
+      as: invoices
       connector: yooz
-      sourceId: dsrc_123
-      method: GET
-      pathTemplate: /invoices/{{invoice_id}}
-      bodyTemplate: null
-      parameterSchema:
-        type: object
-        additionalProperties: false
-        required: [invoice_id]
-        properties:
-          invoice_id: {type: string}
-      resultSchema:
-        type: object
-        additionalProperties: true
+      actions:
+        - name: get
+          method: GET
+          pathTemplate: /invoices/{{invoice_id}}
+          bodyTemplate: null
+          parameterSchema:
+            type: object
+            additionalProperties: false
+            required: [invoice_id]
+            properties:
+              invoice_id: {type: string}
+          resultSchema:
+            type: object
+            additionalProperties: true
   limits:
     maxCalls: 4
     maxResponseBytes: 2097152
@@ -417,22 +498,33 @@ exactAuthentication:
 
 Rules enforced at compilation include:
 
-- Authority IDs use the same lowercase stable-ID syntax as task names and are
-  unique within the task.
+- Connection IDs and aliases are unique within the task. Aliases and action
+  names are lowercase Python identifiers and are not Python keywords.
+- Action names are unique within their connection.
 - `pathTemplate` is provider-relative and starts with `/`; absolute URLs are not
   accepted.
 - A `{{parameter_name}}` path placeholder must be declared in
   `parameterSchema.properties`.
-- A `GET` authority has `bodyTemplate: null`.
-- The same `sourceId` cannot be associated with different connectors in one
-  task.
-- There are at most 128 authorities and 128 calls. Per-response bytes are at
-  most 2 MiB, cumulative bytes at most 16 MiB, and wall time at most 120 seconds.
-  The cumulative response bound cannot be lower than the per-response bound.
+- A `GET` action has `bodyTemplate: null`.
+- There are at most 128 connections, 128 total actions, and 128 calls.
+  Per-response bytes are at most 2 MiB, cumulative bytes at most 16 MiB, and
+  wall time is at most 120 seconds. The cumulative response bound is not lower
+  than the per-response bound.
 
-The compiler derives one `authenticated-read.exact` grant per authority. Python
-does not receive credentials. The executor/host interprets the sealed authority
-and performs the provider call; an undeclared authority fails closed.
+The compiler derives one `authenticated-read.exact` grant per connection action.
+Python receives task-local aliases and methods, not credentials. The
+executor/host interprets the sealed connection and action declaration and
+performs the provider call; an undeclared pair fails closed.
+
+```python
+from flowglad.connections import invoices
+
+invoice = invoices.get({"invoice_id": "inv_123"})
+```
+
+The module exists only for a code task with `exactAuthentication`. Import
+connection aliases only from `flowglad.connections`; the runtime exposes no
+top-level `connections` compatibility alias.
 
 ## Terminal command DAGs
 
@@ -446,6 +538,27 @@ with:
     terminal:
       kind: command-dag
 ```
+
+Python constructs the terminal value with the task-scoped helper module:
+
+```python
+from flowglad.commands import command, command_dag
+
+proposal = command_dag(
+    command("create-yooz-attachment", documentNumber="DOC-123"),
+    title="Attach Yooz document",
+    reasoning_summary="Attach the bounded Yooz document.",
+)
+```
+
+The helper assigns each node's JSON filename and zero-based position, supplies
+an empty edge list, and returns an ordinary JSON mapping. The executor owns the
+workflow-run association, so scripts do not provide producer identity.
+`ordering_edge` and
+`data_edge` accept command declarations directly for multi-node DAGs, so source
+code does not repeat filenames. The
+[executor code ABI](./CODE_ABI.md) defines the complete
+constructor signatures and validation boundary.
 
 At most one task may declare `terminal`, and that task must be the final task in
 the top-level `do` list. The task proposes a DAG; it does not execute commands
@@ -462,11 +575,11 @@ compiler derives the minimum Flowglad sidecar grants mechanically:
 - browser call → one origin/data-source-bound `browser.session`
 - consumed artifact → `artifact.read`
 - produced artifact → `artifact.write`
-- exact authority → `authenticated-read.exact`
+- authenticated connection action → `authenticated-read.exact`
 - terminal declaration → `terminal-command-dag.construct`
 
 Changing a catalog call or `fg` declaration changes the derived grants and the
-sealed plan digest. Arbitrary task metadata never grants authority.
+sealed plan digest. Arbitrary task metadata never creates a grant.
 
 ## Source identity, publication, and compatibility
 
@@ -487,8 +600,10 @@ Successful compilation seals:
 Publication snapshots accessible Space-file bytes into the content-addressed
 execution-resource store and verifies the authored digest. It requires an exact,
 verified Skill revision and rejects missing, inaccessible, or digest-mismatched
-resources. An identical plan is idempotent. OWS revisions remain inactive and
-activation fails closed until the matching executor version is available.
+resources. An identical plan is idempotent. Publication does not implicitly
+activate a revision; activation fails closed unless the matching executor
+version is available and the persisted bundle, closure, and digests match
+exactly. Runtime routing is a separate, default-off feature-gated decision.
 
 A different OWS revision, profile URI, catalog function version, extension
 version, or compiler version is incompatible by default. Flowglad does not
@@ -519,16 +634,21 @@ has three distinct levels:
 1. The official OWS SDK checks OWS schema and DSL validity.
 2. The Flowglad compiler checks profile support, security declarations,
    artifacts, and terminal topology.
-3. Publication resolves organization-scoped code resources and verifies exact
-   bytes/manifests before storing the inactive revision.
+3. Publication resolves organization-scoped code resources, verifies exact
+   bytes/manifests, and statically checks selected Python entrypoint
+   declarations before storing the immutable revision.
 
 None of these executes the workflow. Runtime conformance belongs to the
-standalone executor and differential-verification milestones.
+standalone executor, host, and gated application-boundary test suites.
 
 ## Complete examples
 
+- [Invoice reconciliation: exact ledger read → evidence artifacts → command DAG](./invoice-reconciliation.ows.yaml)
 - [Yooz: code → inference → code](./yooz-bounded-document-number.ows.yaml)
 - [Mock Bank: browser agent → PDF artifact → code](./mock-bank-browser-statement.ows.yaml)
 
 The examples are validated with the official OWS 1.0.3 schema and the Flowglad
-compiler.
+compiler and generate the standalone executor's committed canonical bundles.
+The invoice-reconciliation example exercises task injection, scoped connection
+actions, artifact production and consumption, and command-DAG edges through a
+complete accounts-payable operation in the standalone CLI test harness.

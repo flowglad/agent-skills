@@ -1,0 +1,162 @@
+document:
+  dsl: '1.0.3'
+  namespace: flowglad-evals
+  name: invoice-reconciliation
+  version: '1.0.0'
+  title: Accounts-payable invoice reconciliation
+  summary: >-
+    Canonical OWS program that fetches an exact ledger match, persists invoice
+    evidence as artifacts, and proposes an approval-bound reconciliation DAG.
+  metadata:
+    fg:
+      profile: https://flowglad.com/ows/profiles/automation/v1
+      requiredExtensions:
+        - https://flowglad.com/ows/extensions/capabilities/v1
+        - https://flowglad.com/ows/extensions/runtime-profile/v1
+        - https://flowglad.com/ows/extensions/exact-authentication/v1
+        - https://flowglad.com/ows/extensions/artifacts/v1
+        - https://flowglad.com/ows/extensions/terminal-command-dag/v1
+
+use:
+  catalogs:
+    flowglad:
+      endpoint:
+        uri: https://flowglad.com/ows/catalogs/automation/v1
+
+input:
+  schema:
+    format: jsonschema:2020-12
+    document:
+      type: object
+      additionalProperties: false
+      required:
+        - invoice_id
+        - review_note
+        - invoice_pdf_base64
+        - support_pdf_base64
+      properties:
+        invoice_id: {type: string}
+        review_note: {type: string}
+        invoice_pdf_base64: {type: string}
+        support_pdf_base64: {type: string}
+
+do:
+  - prepare-reconciliation:
+      input:
+        from: '${ . }'
+      call: code:1.0.0@flowglad
+      with:
+        fg:
+          resource:
+            kind: space-file
+            spaceId: spc_eval_invoice_reconciliation
+            path: invoice_reconciliation_ows_v1.py
+            digest: sha256:530d711f908d10be5f49b84e7b21f5b2a7bae779b926a3370a2bc8c72b668e44
+          entrypoint: prepare_reconciliation
+          runtime:
+            language: python
+            version: '3.11'
+            memoryMb: 128
+          exactAuthentication:
+            connections:
+              - connectionId: dsrc_ap_ledger
+                as: ap_ledger
+                connector: mock
+                actions:
+                  - name: get
+                    method: GET
+                    pathTemplate: /invoices/{{invoice_id}}
+                    bodyTemplate: null
+                    parameterSchema:
+                      type: object
+                      additionalProperties: false
+                      required: [invoice_id]
+                      properties:
+                        invoice_id: {type: string}
+                    resultSchema:
+                      type: object
+                      additionalProperties: false
+                      required: [rows]
+                      properties:
+                        rows:
+                          type: array
+                          minItems: 1
+                          maxItems: 1
+                          items:
+                            type: object
+                            additionalProperties: false
+                            required: [id]
+                            properties:
+                              id: {type: string}
+            limits:
+              maxCalls: 1
+              maxResponseBytes: 1024
+              maxCumulativeResponseBytes: 1024
+              maxWallTimeMs: 5000
+          produces:
+            - name: reconciliation-context
+              mediaType: application/json
+              maxBytes: 4096
+            - name: review-note
+              mediaType: application/json
+              maxBytes: 4096
+            - name: invoice-pdf
+              mediaType: application/pdf
+              maxBytes: 10000
+            - name: support-pdf
+              mediaType: application/pdf
+              maxBytes: 10000
+      timeout:
+        after: PT10S
+      output:
+        schema:
+          format: jsonschema:2020-12
+          document:
+            type: object
+            additionalProperties: false
+            required: [invoice_id, ledger_row_id]
+            properties:
+              invoice_id: {type: string}
+              ledger_row_id: {type: string}
+      export:
+        as: '${ $context + { reconciliation: . } }'
+
+  - build-reconciliation-dag:
+      input:
+        from: '${ $context.reconciliation }'
+      call: code:1.0.0@flowglad
+      with:
+        fg:
+          resource:
+            kind: space-file
+            spaceId: spc_eval_invoice_reconciliation
+            path: invoice_reconciliation_ows_v1.py
+            digest: sha256:530d711f908d10be5f49b84e7b21f5b2a7bae779b926a3370a2bc8c72b668e44
+          entrypoint: build_reconciliation_dag
+          runtime:
+            language: python
+            version: '3.11'
+            memoryMb: 128
+          consumes:
+            - reconciliation-context
+            - review-note
+            - invoice-pdf
+            - support-pdf
+          terminal:
+            kind: command-dag
+      timeout:
+        after: PT10S
+      output:
+        schema:
+          format: jsonschema:2020-12
+          document:
+            type: object
+      export:
+        as: '${ $context + { terminalDag: . } }'
+
+output:
+  as: '${ $context.terminalDag }'
+  schema:
+    format: jsonschema:2020-12
+    document:
+      type: object

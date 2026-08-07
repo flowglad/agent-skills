@@ -14,7 +14,6 @@ document:
       requiredExtensions:
         - https://flowglad.com/ows/extensions/capabilities/v1
         - https://flowglad.com/ows/extensions/runtime-profile/v1
-        - https://flowglad.com/ows/extensions/artifacts/v1
         - https://flowglad.com/ows/extensions/terminal-command-dag/v1
 
 use:
@@ -63,17 +62,12 @@ do:
             kind: space-file
             spaceId: spc_eval_yooz_two_proposal_attachment_plan
             path: yooz_ows_v1.py
-            digest: sha256:c3577ca53b2e8c998dab234af30e3bc679c12ee07fb0fa9200aa1bdff11bc456
+            digest: sha256:f2b4835baf6e4e33241e5d1e861585bc8d7cd71b1a40626605996c59b483b54c
+          entrypoint: normalize_invoice_context
           runtime:
             language: python
             version: '3.11'
             memoryMb: 128
-          produces:
-            - name: normalized-context
-              as: normalized_context
-              mediaType: application/json
-              maxBytes: 1048576
-              path: normalized-context.json
       timeout:
         after: PT10S
       output:
@@ -82,9 +76,12 @@ do:
           document:
             type: object
             additionalProperties: false
-            required: [invoice_text]
+            required: [connection_id, fileContent, filename, rows]
             properties:
-              invoice_text: {type: string}
+              connection_id: {type: string}
+              fileContent: {type: string}
+              filename: {type: string}
+              rows: {type: array}
       export:
         as: '${ $context + { normalized: . } }'
 
@@ -129,15 +126,12 @@ do:
             kind: space-file
             spaceId: spc_eval_yooz_two_proposal_attachment_plan
             path: yooz_ows_v1.py
-            digest: sha256:c3577ca53b2e8c998dab234af30e3bc679c12ee07fb0fa9200aa1bdff11bc456
+            digest: sha256:f2b4835baf6e4e33241e5d1e861585bc8d7cd71b1a40626605996c59b483b54c
+          entrypoint: build_attachment_dag
           runtime:
             language: python
             version: '3.11'
             memoryMb: 128
-          consumes:
-            - name: normalized-context
-              as: normalized_context
-              mediaType: application/json
           terminal:
             kind: command-dag
       timeout:
