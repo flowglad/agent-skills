@@ -49,10 +49,9 @@ do:
             maxSteps: 20
           produces:
             - name: statement-pdf
-              as: statement_pdf
               mediaType: application/pdf
               maxBytes: 10000
-              path: statement/flowglad-bank-statement.pdf
+              fileName: flowglad-bank-statement.pdf
               digest: sha256:87901bdd6fc868d13e52051092e1e0411b865390b71903256370e679062e91f4
       timeout:
         after: PT60S
@@ -78,16 +77,14 @@ do:
             kind: space-file
             spaceId: spc_eval_yooz_two_proposal_attachment_plan
             path: verify_mock_bank_ows_v1.py
-            digest: sha256:ba6008ada9caa2e2f8c8cc82fc68590907e0b43395e178b44db1110cdc6ede71
+            digest: sha256:6b543c9c3577380aa8268eb281f943a8b9371eb1b25ca121da2874d4e03a38a1
+          entrypoint: verify_statement
           runtime:
             language: python
             version: '3.11'
             memoryMb: 128
           consumes:
-            - name: statement-pdf
-              as: statement_pdf
-              mediaType: application/pdf
-              digest: sha256:87901bdd6fc868d13e52051092e1e0411b865390b71903256370e679062e91f4
+            - statement-pdf
           terminal:
             kind: command-dag
       timeout:
