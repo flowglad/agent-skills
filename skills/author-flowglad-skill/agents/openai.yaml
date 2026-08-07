@@ -1,0 +1,4 @@
+interface:
+  display_name: "Author Flowglad Skill"
+  short_description: "Create governed reusable Python Skills"
+  default_prompt: "Use $author-flowglad-skill to create and verify a reusable Flowglad Skill package."

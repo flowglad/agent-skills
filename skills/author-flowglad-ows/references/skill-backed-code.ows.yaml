@@ -1,7 +1,7 @@
 document:
   dsl: '1.0.3'
-  namespace: replace-me
-  name: replace-me
+  namespace: flowglad-examples
+  name: skill-backed-code
   version: '1.0.0'
   metadata:
     fg:
@@ -44,6 +44,8 @@ do:
             language: python
             version: '3.11'
             memoryMb: 128
+          consumes: []
+          produces: []
       timeout:
         after: PT30S
       output:
