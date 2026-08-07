@@ -1,0 +1,21 @@
+[
+  {
+    "name": "transform",
+    "description": "Transform one explicit string into a JSON result",
+    "runtime": "native-python",
+    "interface": "cli-v1",
+    "scriptPath": "scripts/main.py",
+    "positionalArgs": [
+      {
+        "name": "value",
+        "description": "Value to transform",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "fixturePaths": [],
+    "smokeArgs": ["example"],
+    "outputChecks": [{"kind": "stdout-json"}],
+    "testPaths": ["tests/main_test.py"]
+  }
+]

@@ -1,6 +1,6 @@
 ---
 name: author-flowglad-ows
-description: Author and revise Flowglad automation programs using the Flowglad profile of Open Workflow Specification 1.0.3. Use when creating an OWS YAML workflow, translating an automation idea into Flowglad OWS, diagnosing compiler errors, preparing a workflow for validation or publication, or modifying an existing Flowglad OWS program.
+description: Author and revise Flowglad automation programs using the Flowglad profile of Open Workflow Specification 1.0.3. Use when creating an OWS YAML workflow, composing connections, browser tasks, artifacts, and verified Flowglad Skill revisions, translating an automation idea into OWS, diagnosing compiler errors, preparing a workflow for validation or publication, or modifying an existing Flowglad OWS program.
 ---
 
 # Author Flowglad OWS
@@ -9,24 +9,30 @@ Create the canonical OWS source for a Flowglad automation.
 
 ## Authoring process
 
-1. Gather the intended workflow inputs, outputs, tasks, dataflow, artifacts, external systems, and side effects.
-2. Read `references/AUTHORING.md` completely before writing or revising a program. Treat it as the authoritative Flowglad profile reference. When the program uses a code call, also read `references/CODE_ABI.md` completely before writing or revising its Python resource.
-3. Inspect the closest complete example when the workflow needs one:
-   - Read `references/invoice-reconciliation.ows.yaml` for authenticated connection actions, task-input injection, evidence artifacts, and a multi-command terminal DAG.
-   - Read `references/yooz-bounded-document-number.ows.yaml` for code, inference, artifacts, and a terminal command-DAG proposal.
-   - Read `references/mock-bank-browser-statement.ows.yaml` for a browser-agent call, a PDF artifact, and a code consumer.
-4. Copy `assets/starter.ows.yaml` when starting a simple code workflow, then replace every placeholder with an exact value.
-5. Write the canonical workflow as YAML with the `.ows.yaml` extension. Create referenced Python files separately.
-6. Validate with the Flowglad compiler or an advertised Flowglad MCP validation tool when either is available. Resolve every diagnostic before claiming compiler validity.
-7. Publish or modify a remote Automation only when the user asks. Treat an update as publication of a new immutable revision, never as an in-place rewrite.
-8. Report authoring, compiler validation, resource validation, publication, activation, and execution as separate states.
+1. Gather the intended workflow inputs, outputs, tasks, dataflow, artifacts, external systems, reusable capabilities, and side effects.
+2. Read `references/AUTHORING.md` completely before writing or revising a program. Treat it as the authoritative Flowglad profile reference.
+3. For every code capability, read `references/SKILL_RESOURCES.md` and resolve an exact OWS-compatible verified Skill revision when possible.
+4. If a required reusable capability is missing and `author-flowglad-skill` is available, use it to author and verify a package whose selected source also satisfies the OWS code ABI. Resume OWS authoring only after resolving the exact revision, entrypoint, manifest digest, and decorated function name.
+5. Use a `space-file` code resource only when the user requests direct Space code, the Skill lifecycle is unavailable, or the code is intentionally automation-specific. Read `references/CODE_ABI.md` completely before writing or revising direct Python source.
+6. Inspect the closest complete example when the workflow needs one:
+   - Read `references/skill-backed-code.ows.yaml` for the preferred verified Skill-revision resource shape.
+   - Read `references/invoice-reconciliation.ows.yaml` for authenticated connection actions, task-input injection, evidence artifacts, and a multi-command terminal DAG using direct Space code.
+   - Read `references/yooz-bounded-document-number.ows.yaml` for direct code, inference, artifacts, and a terminal command-DAG proposal.
+   - Read `references/mock-bank-browser-statement.ows.yaml` for a browser-agent call, a PDF artifact, and a direct code consumer.
+7. Copy `assets/starter.ows.yaml` when starting a simple Skill-backed workflow, then replace every placeholder with an exact value.
+8. Write the canonical workflow as YAML with the `.ows.yaml` extension. Create companion Python only for a selected `space-file` resource.
+9. Validate with the Flowglad compiler or an advertised Flowglad MCP validation tool when either is available. Resolve every diagnostic before claiming compiler validity.
+10. Publish or modify a remote Automation only when the user asks. Treat an update as publication of a new immutable revision, never as an in-place rewrite.
+11. Report Skill verification, OWS compiler validation, resource validation, publication, activation, and execution as separate states.
 
 ## Resource integrity
 
 - Never invent Flowglad IDs, source IDs, file digests, Skill revision identities, connection authorities, or browser-auth data sources.
 - Resolve exact values from user-provided context or available Flowglad tools.
+- Prefer active or verified immutable Skill revisions over mutable Space files for reusable code.
+- Do not infer OWS compatibility from Skill verification alone. OWS publication separately validates the selected decorated function and exact manifest digest.
 - Leave an obvious placeholder when an exact value is unavailable and list it in the handoff.
-- Recompute every SHA-256 digest after changing referenced bytes.
+- Recompute every SHA-256 digest after changing `space-file` bytes. Resolve a Skill resource digest from its verified revision manifest.
 - Do not claim publication readiness until every organization-scoped resource is accessible and digest-matched.
 
 ## Profile guardrails
@@ -37,6 +43,7 @@ Create the canonical OWS source for a Flowglad automation.
 - Give every task an explicit timeout.
 - Use only the catalog calls and task shapes allowed by `references/AUTHORING.md`.
 - Use Python 3.11 for code calls.
+- Keep orchestration in OWS and reusable computation in governed Skills when the code can satisfy both the Skill CLI and OWS code-entrypoint contracts.
 - Do not generate legacy v0 definitions, `StepSpec[]`, or runner-specific intermediate representations.
 - Do not emulate unsupported loops, retries, waits, forks, schedules, composite tasks, third-party catalogs, or generic `run` tasks.
 - Do not claim that successful compilation authorizes activation or execution.
@@ -46,7 +53,8 @@ Create the canonical OWS source for a Flowglad automation.
 Return:
 
 - The complete `.ows.yaml` document.
-- Every required companion Python file.
+- Every required companion Python file only for selected `space-file` resources.
+- Every pinned Skill, revision, entrypoint, manifest digest, and decorated function identity.
 - All unresolved identifiers, digests, and publication dependencies.
 - The exact validation performed and diagnostics remaining.
-- Publication, activation, and execution status without conflating them.
+- Skill verification, OWS publication, activation, and execution status without conflating them.
