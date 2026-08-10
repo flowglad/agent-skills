@@ -16,6 +16,7 @@
 - [Browser-agent calls](#browser-agent-calls)
 - [Artifacts](#artifacts)
 - [Authenticated connection actions](#authenticated-connection-actions)
+- [Flowglad Page access](#flowglad-page-access)
 - [Terminal command DAGs](#terminal-command-dags)
 - [Capabilities are derived](#capabilities-are-derived)
 - [Source identity, publication, and compatibility](#source-identity-publication-and-compatibility)
@@ -136,6 +137,7 @@ behavior that OWS does not define.
 | Model or browser runtime profile | `with.fg.profile` |
 | File/JSON artifact identity and integrity | `with.fg.produces` and `with.fg.consumes` |
 | Authenticated connection actions | `with.fg.exactAuthentication` on a code call |
+| Exact Flowglad Page reads | `with.fg.pageAccess` on a code call |
 | Approval-bound terminal command proposal | `with.fg.terminal` on the final code call |
 | Security capabilities | Do not author them; the compiler derives them |
 
@@ -162,6 +164,7 @@ URIs:
 
 - `https://flowglad.com/ows/extensions/capabilities/v1`
 - `https://flowglad.com/ows/extensions/exact-authentication/v1`
+- `https://flowglad.com/ows/extensions/page-access/v1`
 - `https://flowglad.com/ows/extensions/runtime-profile/v1`
 - `https://flowglad.com/ows/extensions/artifacts/v1`
 - `https://flowglad.com/ows/extensions/terminal-command-dag/v1`
@@ -278,11 +281,11 @@ digest: sha256:...
 ```
 
 ```yaml
-# An exact, verified Skill revision entrypoint
+# An exact Python module in a verified Skill revision
 kind: skill-revision
 skillId: skl_123
 revisionId: skr_123
-entrypointId: ske_123
+path: scripts/reconcile.py
 digest: sha256:...
 ```
 
@@ -290,20 +293,32 @@ Space-file paths are normalized relative POSIX paths, must end in `.py`, and
 must not contain empty, `.`, or `..` segments. Publication reads the current
 bytes, verifies the authored SHA-256 digest, and writes the bytes to the
 content-addressed execution-resource store. For a Skill, the digest identifies
-the verified revision manifest.
+the verified revision manifest, while `path` selects the Python module inside
+that sealed bundle and must name a `.py` file under `scripts/`. The code task's
+`entrypoint` selects the public top-level function inside the module; Skill CLI
+entrypoint IDs do not participate in OWS execution.
 
 The only profile-v1 runtime is Python 3.11. `memoryMb` is an integer from 64
 through 4096.
 
 Each code task declares one public top-level Python function through
-`entrypoint`. That function uses `@entrypoint` from `flowglad.entrypoints` and
-declares injected task input and artifact dependencies with annotated
-parameters. Publication statically reads the selected declaration from the
-exact pinned bytes and checks its artifact parameters against `consumes` and
-`produces`. The executor imports the sealed resource, binds admitted values,
-and serializes the function's JSON-compatible return through the bounded
-stdout process channel. The function is synchronous. Author code sends
+`entrypoint`. A plain selected function must be synchronous and declare zero
+parameters. A function that needs injected task input or artifacts uses
+`@entrypoint` from `flowglad.entrypoints`; the decorator binds its annotated
+parameters and exposes a zero-argument wrapper to the OWS runtime. Publication
+statically reads the OWS-selected declaration from the exact pinned bytes and,
+for decorated functions, checks artifact parameters against `consumes` and
+`produces`. The executor imports the sealed resource, requires the selected
+runtime callable to have zero arguments, and serializes its JSON-compatible
+return through the bounded stdout process channel. Author code sends
 diagnostics only to stderr; there is no result envelope or result file.
+
+```python
+def reconcile() -> dict[str, bool]:
+    return {"normalized": True}
+```
+
+For dependency injection, decorate an N-arity source function:
 
 ```python
 from flowglad.entrypoints import ArtifactInput, Input, entrypoint
@@ -317,7 +332,10 @@ def reconcile(invoice_id: Input, invoice_pdf: ArtifactInput) -> dict[str, object
 `Input` binds the task-input object field with the same name. `TaskInput` binds
 the complete task input. `ArtifactInput` and `ArtifactOutput` bind the matching
 task-local aliases. Artifact parameters match the workflow declaration
-exactly; the decorator does not add a capability. The
+exactly for decorated functions; the decorator does not add a capability. A
+plain zero-argument function can instead use the task-scoped
+`flowglad.runtime`, `flowglad.artifacts`, and `flowglad.connections` modules.
+The
 [code ABI](./CODE_ABI.md) defines the declaration grammar
 and runtime failures.
 
@@ -334,7 +352,7 @@ checks.
 | Constructs the task-scoped modules and injects declared dependencies from sealed, admitted runtime state. | Declares only the dependencies the selected function uses and implements the task behavior. |
 | Validates the task input before process launch and the function return against the task's OWS schemas. | Implements the transformation and checks semantic or cross-field invariants that the schemas do not express. |
 | Admits consumed artifacts and enforces path containment, media type, size, and digest; verifies every produced slot after exit. | Uses the declared artifact objects and checks domain meaning inside file content when the workflow requires it. |
-| Binds each `flowglad.connections` alias to its sealed connection actions, validates action parameters and host results, and enforces call budgets. | Chooses which declared actions to call and checks business meaning, match cardinality, consistency, and pagination progress or completeness when action schemas do not express them. |
+| Binds each `flowglad.connections` alias to sealed actions and each `flowglad.pages` alias to one visible Page; validates host results and enforces call budgets. | Chooses which declared reads to perform and checks business meaning, consistency, and completeness. |
 | Invokes the declared function, serializes one bounded strict JSON value, requires exit status zero, supervises timeout/cancellation, and validates a declared terminal command DAG. | Returns one JSON-compatible task value, sends diagnostics to stderr, and raises when a business constraint fails. |
 
 Python does not read or revalidate the internal manifest, connection alias
@@ -526,6 +544,50 @@ The module exists only for a code task with `exactAuthentication`. Import
 connection aliases only from `flowglad.connections`; the runtime exposes no
 top-level `connections` compatibility alias.
 
+## Flowglad Page access
+
+Only a code call may declare exact Page access. Each declaration binds an
+immutable Page ID to a task-local Python alias. The runtime resolves the Page
+through the automation Space's Page visibility scope, including transitively
+linked Spaces, and fails closed if that access has been revoked.
+
+```yaml
+pageAccess:
+  pages:
+    - pageId: page_123
+      as: todo
+  limits:
+    maxCalls: 2
+    maxResponseBytes: 2097152
+    maxCumulativeResponseBytes: 4194304
+    maxWallTimeMs: 30000
+```
+
+Page IDs and aliases are unique within the task. Aliases are lowercase Python
+identifiers and are not Python keywords. A task may declare at most 128 Pages
+and 128 calls. The connection-read byte and wall-time maxima also apply.
+
+The compiler derives one `page.read.exact` grant per Page. Python imports only
+the declared aliases and calls `get_content()`:
+
+```python
+from flowglad.pages import todo
+
+snapshot = todo.get_content()
+markdown = snapshot["pageContent"]["contents"]
+observation_id = snapshot["observationId"]
+```
+
+The result mirrors the exact `get_page_content` surface: `pageContent` includes
+the current `contentsVersion`, bounded Markdown, and explicit truncation
+metadata; `found` is true; and `observationId` identifies the full-content
+version/hash observation. Use that observation ID as `baseObservationId` when
+constructing an `edit-flowglad-page` command. Durable OWS evidence retains the
+observation identity so approval preview and execution can verify it.
+
+`flowglad.pages` exists only when `pageAccess` is declared. The runtime exposes
+no top-level `pages` compatibility alias.
+
 ## Terminal command DAGs
 
 The only profile-v1 terminal effect is an approval-bound command DAG proposal.
@@ -576,6 +638,7 @@ compiler derives the minimum Flowglad sidecar grants mechanically:
 - consumed artifact → `artifact.read`
 - produced artifact → `artifact.write`
 - authenticated connection action → `authenticated-read.exact`
+- declared Page → `page.read.exact`
 - terminal declaration → `terminal-command-dag.construct`
 
 Changing a catalog call or `fg` declaration changes the derived grants and the
@@ -646,6 +709,7 @@ standalone executor, host, and gated application-boundary test suites.
 - [Invoice reconciliation: exact ledger read → evidence artifacts → command DAG](./invoice-reconciliation.ows.yaml)
 - [Yooz: code → inference → code](./yooz-bounded-document-number.ows.yaml)
 - [Mock Bank: browser agent → PDF artifact → code](./mock-bank-browser-statement.ows.yaml)
+- [TODO Page: exact Page read → edit command DAG](./page-todo-update.ows.yaml)
 
 The examples are validated with the official OWS 1.0.3 schema and the Flowglad
 compiler and generate the standalone executor's committed canonical bundles.

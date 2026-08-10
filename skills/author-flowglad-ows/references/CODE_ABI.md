@@ -2,9 +2,12 @@
 
 This is the author contract for `code:1.0.0@flowglad`. Each task declares one
 public top-level function in a sealed Python 3.11 resource. The executor imports
-the resource in an argv-based child with empty stdin, injects the dependencies
-declared by that function, and uses its return value as the direct OWS task value. The process
-uses `/workspace` as its working directory and does not invoke a shell.
+the resource in an argv-based child with empty stdin and invokes the function
+selected by the OWS task. The selected runtime callable must be synchronous and
+zero-argument. It may be a plain zero-argument function or the zero-argument
+wrapper produced when `@entrypoint` binds an N-arity source function's injected
+dependencies. The return value is the direct OWS task value. The process uses
+`/workspace` as its working directory and does not invoke a shell.
 
 ## Minimal program
 
@@ -27,13 +30,18 @@ entrypoint: reconcile_invoice
 
 An entrypoint name contains only ASCII letters, digits, and underscores, starts
 with a letter, and identifies a synchronous function defined at module scope.
-The function uses `@entrypoint` from `flowglad.entrypoints`; the decorator has
-no parentheses and directly precedes the `def` declaration. Every parameter
-has one supported dependency annotation and has no default. Positional-only,
-keyword-only, variadic, and unannotated parameters are invalid. A
-dependency-free function has no parameters. The trusted launcher calls the
-decorated wrapper and serializes its return to the bounded stdout process
-channel. Author code does not print a result.
+There are two admitted declaration forms:
+
+- A plain function declares no parameters and is invoked directly.
+- An N-arity function uses `@entrypoint` from `flowglad.entrypoints`; the
+  decorator has no parentheses and directly precedes the `def` declaration.
+  Every parameter has one supported dependency annotation and has no default.
+  Positional-only, keyword-only, variadic, and unannotated parameters are
+  invalid.
+
+The trusted launcher requires either form to resolve to a zero-argument runtime
+function and serializes its return to the bounded stdout process channel.
+Author code does not print a result.
 
 `flowglad.entrypoints` exports these dependency markers:
 
@@ -45,9 +53,10 @@ channel. Author code does not print a result.
 | `ArtifactOutput` | The produced artifact object whose local alias matches the parameter name. |
 
 Publication reads the exact pinned source bytes without importing the module.
-It verifies the selected decorated declaration and requires its artifact
-parameters to match the task's `consumes` and `produces` aliases exactly. The
-runtime repeats this artifact check and reports missing task-input fields with
+It verifies the OWS-selected public declaration. A plain declaration must have
+zero parameters. A decorated declaration may have injected parameters and must
+match the task's `consumes` and `produces` artifact aliases exactly. The runtime
+repeats the decorated artifact check and reports missing task-input fields with
 the available admitted keys. The workflow remains the capability authority;
 the decorator only asserts and binds its selected function's dependencies.
 
@@ -86,7 +95,7 @@ that those declarations do not express.
 | Runtime-module construction and the admitted task state behind every exported value. | The declared entrypoint function and its task-specific behavior. |
 | Task input and function-return shapes against their declared OWS schemas. | Semantic and cross-field invariants that the schemas do not express, such as an exact match count or a required relationship between values. |
 | Consumed and produced artifact containment, media type, size, digest, declaration, and completeness. | Domain meaning inside artifact content when that meaning matters to the workflow. |
-| Connection/action admission, parameter schemas, result schemas, and call/byte/time budgets. | Which admitted action to call and whether its result is meaningful, consistent, complete, and unambiguous for the business operation. |
+| Connection/action and Page admission, result schemas, and call/byte/time budgets. | Which admitted read to call and whether its result is meaningful, consistent, complete, and unambiguous for the business operation. |
 | Function-return serialization, strict JSON stdout, exit status, process bounds, timeout/cancellation, and declared terminal command-DAG structure. | The returned business value and the decision to raise when a business invariant does not hold. |
 
 Resource code does not repeat runtime-module shape checks, rebind connection
@@ -186,9 +195,38 @@ The private bridge rejects an undeclared connection/action pair or invalid
 parameter schema before host dispatch. It enforces sealed call, response-byte,
 cumulative-byte, and wall-time budgets and validates the host result schema. The
 child receives neither credentials nor the general host socket. Without
-`exactAuthentication`, the executor installs no `flowglad.connections` module
-and no private socket environment. The executor never installs a top-level
-`connections` compatibility alias.
+`exactAuthentication`, the executor installs no `flowglad.connections` module.
+When neither connection nor Page access is declared, it installs no private
+socket environment. The executor never installs a top-level `connections`
+compatibility alias.
+
+## Exact Flowglad Page reads
+
+When the sealed code sidecar declares `pageAccess`, startup installs the
+task-scoped `flowglad.pages` module. Each alias exposes only `get_content()`:
+
+```python
+from flowglad.pages import todo
+
+snapshot = todo.get_content()
+markdown = snapshot["pageContent"]["contents"]
+observation_id = snapshot["observationId"]
+```
+
+The result has `pageContent`, `found`, and `observationId` fields.
+`pageContent` carries the Page ID, content version, bounded Markdown, and
+explicit truncation lengths. The host records the full-content version and
+SHA-256 observation as durable `page.read.exact` evidence. An
+`edit-flowglad-page` command authored from this read uses `observationId` as its
+`baseObservationId`; approval and execution resolve the version/hash from the
+evidence rather than trusting command-authored values.
+
+The private bridge rejects undeclared Page IDs, mismatched Page results,
+invalid host results, and exhausted call, response-byte, cumulative-byte, or
+wall-time budgets. The host also denies a declared Page that is no longer
+visible to the automation Space. Without `pageAccess`, the executor installs no
+`flowglad.pages` module. It never installs a top-level `pages` compatibility
+alias.
 
 ## Failures and supervision
 

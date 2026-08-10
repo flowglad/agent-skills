@@ -15,7 +15,7 @@ Create a durable Flowglad Skill package and follow its governed revision lifecyc
    - For a new Skill, derive the slug only from the user's request.
    - For an update, require the exact Skill and base revision identities. Do not infer them from names.
 4. Read `references/PACKAGE_CONTRACT.md` completely before authoring package files or entrypoint declarations.
-5. Copy `assets/starter-package` and `assets/starter-entrypoints.json` for a minimal new CLI package, then replace every placeholder and extend only what the requested capability needs.
+5. Copy `assets/starter-package` and `assets/starter-entrypoints.json` for a minimal new CLI package. Rename the copied `SKILL.template.md` to exactly `SKILL.md`, then replace every placeholder and extend only what the requested capability needs.
 6. When the package must be callable from OWS, also read `references/OWS_COMPATIBILITY.md` before writing its selected Python source. The CLI starter is not OWS-compatible by itself.
 7. Create or revise `SKILL.md`, support files, native-Python scripts, synthetic fixtures, and tests. Keep scratch work outside the package.
 8. Run every declared test and the exact smoke invocation for every entrypoint. Resolve all local failures.
@@ -32,6 +32,7 @@ Create a durable Flowglad Skill package and follow its governed revision lifecyc
 - Use small synthetic fixtures that exercise the declared interface without copying customer data.
 - Preserve existing stable entrypoint IDs, names, and descriptions when updating a Skill.
 - Do not fabricate stable Flowglad IDs. If an update requires a new entrypoint identity and no available tool allocates one, report that publication dependency.
+- Keep Skill CLI entrypoint identities separate from OWS source selection. OWS pins the exact Python module `path` in a verified revision and names the selected function independently.
 
 ## Verification and publication integrity
 

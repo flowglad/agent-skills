@@ -74,10 +74,11 @@ do:
       with:
         fg:
           resource:
-            kind: space-file
-            spaceId: spc_eval_yooz_two_proposal_attachment_plan
-            path: verify_mock_bank_ows_v1.py
-            digest: sha256:6b543c9c3577380aa8268eb281f943a8b9371eb1b25ca121da2874d4e03a38a1
+            kind: skill-revision
+            skillId: skl_eval_mock_bank_statement
+            revisionId: skr_eval_mock_bank_statement_v1
+            path: scripts/verify_mock_bank_ows_v1.py
+            digest: sha256:5df4496a476a5951bc0da648bc977adb87aee91f28ed9b065d7a008d482f4dc8
           entrypoint: verify_statement
           runtime:
             language: python

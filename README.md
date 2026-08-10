@@ -19,7 +19,8 @@ npx skills add flowglad/agent-skills
 ## Current status
 
 Flowglad automatically verifies packages submitted through the Skill lifecycle. The OWS authoring
-skill produces canonical Flowglad OWS documents and can prefer exact verified Skill revisions for
-code resources. Flowglad can validate and publish valid OWS documents as immutable, inactive
-revisions. Activation and execution require the standalone OWS executor and are not currently
-available.
+skill composes exact verified Skill revisions and other Flowglad capabilities into canonical OWS
+documents. Flowglad validates and publishes valid documents as immutable revisions for the
+standalone OWS executor. Activation validates the sealed runtime identity, while routing remains
+default-off and organization-allowlisted. Successful compilation alone does not authorize
+execution.

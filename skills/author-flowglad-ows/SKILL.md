@@ -12,13 +12,14 @@ Create the canonical OWS source for a Flowglad automation.
 1. Gather the intended workflow inputs, outputs, tasks, dataflow, artifacts, external systems, reusable capabilities, and side effects.
 2. Read `references/AUTHORING.md` completely before writing or revising a program. Treat it as the authoritative Flowglad profile reference.
 3. For every code capability, read `references/SKILL_RESOURCES.md` and resolve an exact OWS-compatible verified Skill revision when possible.
-4. If a required reusable capability is missing and `author-flowglad-skill` is available, use it to author and verify a package whose selected source also satisfies the OWS code ABI. Resume OWS authoring only after resolving the exact revision, entrypoint, manifest digest, and decorated function name.
+4. If a required reusable capability is missing and `author-flowglad-skill` is available, use it to author and verify a package whose selected source also satisfies the OWS code ABI. Resume OWS authoring only after resolving the exact revision, module path, manifest digest, and selected function name.
 5. Use a `space-file` code resource only when the user requests direct Space code, the Skill lifecycle is unavailable, or the code is intentionally automation-specific. Read `references/CODE_ABI.md` completely before writing or revising direct Python source.
 6. Inspect the closest complete example when the workflow needs one:
    - Read `references/skill-backed-code.ows.yaml` for the preferred verified Skill-revision resource shape.
    - Read `references/invoice-reconciliation.ows.yaml` for authenticated connection actions, task-input injection, evidence artifacts, and a multi-command terminal DAG using direct Space code.
    - Read `references/yooz-bounded-document-number.ows.yaml` for direct code, inference, artifacts, and a terminal command-DAG proposal.
    - Read `references/mock-bank-browser-statement.ows.yaml` for a browser-agent call, a PDF artifact, and a direct code consumer.
+   - Read `references/page-todo-update.ows.yaml` for exact Page reads and Page edit command DAGs.
 7. Copy `assets/starter.ows.yaml` when starting a simple Skill-backed workflow, then replace every placeholder with an exact value.
 8. Write the canonical workflow as YAML with the `.ows.yaml` extension. Create companion Python only for a selected `space-file` resource.
 9. Validate with the Flowglad compiler or an advertised Flowglad MCP validation tool when either is available. Resolve every diagnostic before claiming compiler validity.
@@ -30,7 +31,7 @@ Create the canonical OWS source for a Flowglad automation.
 - Never invent Flowglad IDs, source IDs, file digests, Skill revision identities, connection authorities, or browser-auth data sources.
 - Resolve exact values from user-provided context or available Flowglad tools.
 - Prefer active or verified immutable Skill revisions over mutable Space files for reusable code.
-- Do not infer OWS compatibility from Skill verification alone. OWS publication separately validates the selected decorated function and exact manifest digest.
+- Do not infer OWS compatibility from Skill verification alone. OWS publication separately validates the selected function declaration and exact manifest digest.
 - Leave an obvious placeholder when an exact value is unavailable and list it in the handoff.
 - Recompute every SHA-256 digest after changing `space-file` bytes. Resolve a Skill resource digest from its verified revision manifest.
 - Do not claim publication readiness until every organization-scoped resource is accessible and digest-matched.
@@ -54,7 +55,7 @@ Return:
 
 - The complete `.ows.yaml` document.
 - Every required companion Python file only for selected `space-file` resources.
-- Every pinned Skill, revision, entrypoint, manifest digest, and decorated function identity.
+- Every pinned Skill ID, revision ID, module path, manifest digest, and selected OWS function.
 - All unresolved identifiers, digests, and publication dependencies.
 - The exact validation performed and diagnostics remaining.
 - Skill verification, OWS publication, activation, and execution status without conflating them.
