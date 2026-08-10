@@ -1,0 +1,75 @@
+document:
+  dsl: '1.0.3'
+  namespace: flowglad-evals
+  name: page-todo-update
+  version: '1.0.0'
+  title: TODO Page update
+  summary: >-
+    Canonical OWS program that reads one exact Flowglad Page and proposes an
+    approval-bound edit authored against that observation.
+  metadata:
+    fg:
+      profile: https://flowglad.com/ows/profiles/automation/v1
+      requiredExtensions:
+        - https://flowglad.com/ows/extensions/capabilities/v1
+        - https://flowglad.com/ows/extensions/runtime-profile/v1
+        - https://flowglad.com/ows/extensions/page-access/v1
+        - https://flowglad.com/ows/extensions/terminal-command-dag/v1
+
+use:
+  catalogs:
+    flowglad:
+      endpoint:
+        uri: https://flowglad.com/ows/catalogs/automation/v1
+
+input:
+  schema:
+    format: jsonschema:2020-12
+    document:
+      type: object
+      additionalProperties: false
+
+do:
+  - build-todo-update:
+      input:
+        from: '${ . }'
+      call: code:1.0.0@flowglad
+      with:
+        fg:
+          resource:
+            kind: space-file
+            spaceId: spc_eval_page_todo
+            path: page_todo_update_ows_v1.py
+            digest: sha256:eec582e45dd36187b3536faa7c9d9885b3bd627ddc73d5af677b2be7a1453ecc
+          entrypoint: build_todo_update
+          runtime:
+            language: python
+            version: '3.11'
+            memoryMb: 128
+          pageAccess:
+            pages:
+              - pageId: page_todo
+                as: todo
+            limits:
+              maxCalls: 1
+              maxResponseBytes: 16384
+              maxCumulativeResponseBytes: 16384
+              maxWallTimeMs: 5000
+          terminal:
+            kind: command-dag
+      timeout:
+        after: PT10S
+      output:
+        schema:
+          format: jsonschema:2020-12
+          document:
+            type: object
+      export:
+        as: '${ $context + { terminalDag: . } }'
+
+output:
+  as: '${ $context.terminalDag }'
+  schema:
+    format: jsonschema:2020-12
+    document:
+      type: object
