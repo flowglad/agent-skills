@@ -4,10 +4,12 @@ Use this reference when authoring files or native-Python entrypoint declarations
 
 ## Package layout
 
-Every package contains an exactly-cased `SKILL.md` with role `instructions`. Other members may live only under these roots:
+Every package contains exactly-cased `meta.json` metadata and `SKILL.md` instructions. Other members may live only under these roots:
 
 | Path | Required role | Purpose |
 | --- | --- | --- |
+| `meta.json` | `file` | Strict package metadata |
+| `SKILL.md` | `instructions` | Agent-facing instructions |
 | `files/**` | Any non-`instructions` role; normally `file` | Ordinary visible support files |
 | `scripts/**` | `script` | Executable Python |
 | `references/**` | `reference` | Instructions loaded as needed |
@@ -26,9 +28,9 @@ Current limits:
 - Individual file: 10 MiB.
 - Whole package: 50 MiB.
 
-## `SKILL.md`
+## `meta.json`
 
-Start with YAML frontmatter delimited by `---`, followed by Markdown instructions. The strict frontmatter supports:
+Store package metadata as one strict JSON object with:
 
 - Required `name`: exactly the Skill slug.
 - Required `description`: non-empty and at most 1,024 characters. State what the Skill does and when an agent should use it.
@@ -37,7 +39,11 @@ Start with YAML frontmatter delimited by `---`, followed by Markdown instruction
 - Optional string-to-string `metadata`.
 - Optional `allowed-tools` string.
 
-Keep the body focused on how an agent should use the packaged capability. Put large domain references in `references/` and reusable execution in `scripts/`.
+Do not add other properties.
+
+## `SKILL.md`
+
+Write Markdown instructions without YAML frontmatter; versioned Flowglad Skill metadata belongs only in `meta.json`. Keep the instructions focused on how an agent should use the packaged capability. Put large domain references in `references/` and reusable execution in `scripts/`.
 
 ## Native-Python CLI entrypoints
 
@@ -83,7 +89,7 @@ Scripts send their declared result to stdout and diagnostics to stderr. Make the
 
 Flowglad verification runs automatically after candidate creation:
 
-1. `structure`: package paths, roles, limits, frontmatter, and asset projection.
+1. `structure`: package paths, roles, limits, metadata, instructions, and asset projection.
 2. `syntax`: Python compilation for scripts and tests.
 3. `interface`: entrypoint and smoke-argument consistency.
 4. `smoke`: exact script invocation plus output checks.

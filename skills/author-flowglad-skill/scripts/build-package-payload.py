@@ -21,6 +21,8 @@ MAX_PATH_DEPTH = 8
 def role_for_path(path: str) -> str:
     if path == "SKILL.md":
         return "instructions"
+    if path == "meta.json":
+        return "file"
     for prefix, role in (
         ("files/", "file"),
         ("scripts/", "script"),
@@ -31,7 +33,7 @@ def role_for_path(path: str) -> str:
         if path.startswith(prefix):
             return role
     raise ValueError(
-        f"unsupported package path {path!r}; expected SKILL.md or an allowed support root"
+        f"unsupported package path {path!r}; expected meta.json, SKILL.md, or an allowed support root"
     )
 
 
@@ -89,6 +91,8 @@ def package_files(package_dir: Path) -> list[dict[str, object]]:
             }
         )
 
+    if not any(item["path"] == "meta.json" for item in objects):
+        raise ValueError("package must contain exactly-cased meta.json")
     if not any(item["path"] == "SKILL.md" for item in objects):
         raise ValueError("package must contain exactly-cased SKILL.md")
     return objects
