@@ -93,8 +93,8 @@ do:
         fg:
           profile:
             id: yooz_document_number
-            provider: openai
-            model: gpt-pinned
+            provider: anthropic
+            model: claude-sonnet-4-6
             systemPrompt: >-
               Use the supplied invoice context. Return only the document number
               visible in the invoice.
