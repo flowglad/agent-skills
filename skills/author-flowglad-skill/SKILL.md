@@ -15,7 +15,7 @@ Create a durable Flowglad Skill package and follow its governed revision lifecyc
    - For a new Skill, derive the slug only from the user's request.
    - For an update, require the exact Skill and base revision identities. Do not infer them from names.
 4. Read `references/PACKAGE_CONTRACT.md` completely before authoring package files or entrypoint declarations.
-5. Copy `assets/starter-package` and `assets/starter-entrypoints.json` for a minimal new CLI package. Rename the copied `SKILL.template.md` to exactly `SKILL.md`, then replace every placeholder and extend only what the requested capability needs.
+5. Copy `assets/starter-package` and `assets/starter-entrypoints.json` for a minimal new CLI package. Rename the copied `SKILL.template.md` to exactly `SKILL.md`, replace every placeholder in `meta.json` and `SKILL.md`, then extend only what the requested capability needs.
 6. When the package must be callable from OWS, also read `references/OWS_COMPATIBILITY.md` before writing its selected Python source. The CLI starter is not OWS-compatible by itself.
 7. Create or revise `SKILL.md`, support files, native-Python scripts, synthetic fixtures, and tests. Keep scratch work outside the package.
 8. Run every declared test and the exact smoke invocation for every entrypoint. Resolve all local failures.
@@ -27,6 +27,7 @@ Create a durable Flowglad Skill package and follow its governed revision lifecyc
 ## Package design
 
 - Prefer small deterministic programs with explicit positional arguments and machine-readable stdout.
+- Keep package metadata in `meta.json` and keep `SKILL.md` limited to Markdown instructions without YAML frontmatter.
 - Consume prepared local files or explicit values. Do not embed tokens, cookies, hidden credentials, or large source datasets.
 - Put structural constraints in the interface and semantic constraints in code.
 - Use small synthetic fixtures that exercise the declared interface without copying customer data.
