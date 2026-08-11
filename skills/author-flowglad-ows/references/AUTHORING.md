@@ -371,8 +371,8 @@ with:
   fg:
     profile:
       id: extract_document_number
-      provider: openai
-      model: gpt-pinned
+      provider: anthropic
+      model: claude-sonnet-4-6
       systemPrompt: Return the document number.
       instructions: Use only the supplied task input.
       maxOutputTokens: 1024
@@ -381,9 +381,11 @@ with:
     produces: []
 ```
 
-`provider` is `openai` or `anthropic`. The model, prompts, and bounds are part of
-the immutable profile digest. Put the result shape in the task's standard OWS
-`output.schema`; do not duplicate it under `with.fg`.
+Profile v1 supports only `anthropic:claude-sonnet-4-6` for inference tasks. The
+compiler rejects every other provider/model pair before publication. The model,
+prompts, and bounds are part of the immutable profile digest. Put the result
+shape in the task's standard OWS `output.schema`; do not duplicate it under
+`with.fg`.
 
 ## Browser-agent calls
 
@@ -695,8 +697,8 @@ Diagnostics use JSON Pointer-like paths into the submitted document. Validation
 has three distinct levels:
 
 1. The official OWS SDK checks OWS schema and DSL validity.
-2. The Flowglad compiler checks profile support, security declarations,
-   artifacts, and terminal topology.
+2. The Flowglad compiler checks profile support, inference-model support,
+   security declarations, artifacts, and terminal topology.
 3. Publication resolves organization-scoped code resources, verifies exact
    bytes/manifests, and statically checks selected Python entrypoint
    declarations before storing the immutable revision.
