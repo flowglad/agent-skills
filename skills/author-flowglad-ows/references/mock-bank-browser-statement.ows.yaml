@@ -40,8 +40,7 @@ do:
         fg:
           profile:
             id: mock_bank_browser_profile
-            targetOrigin: https://mock-bank.flowglad.com
-            browserAuthDataSourceId: dsrc_mock_bank
+            connectionId: dsrc_mock_bank
             promptIdentity: mock-bank/login@v1
             vendorSkillIdentity: mock-bank/extract_statement@v1
             toolSetIdentity: web-agent-tools-v1
@@ -52,7 +51,6 @@ do:
               mediaType: application/pdf
               maxBytes: 10000
               fileName: flowglad-bank-statement.pdf
-              digest: sha256:87901bdd6fc868d13e52051092e1e0411b865390b71903256370e679062e91f4
       timeout:
         after: PT60S
       output:
@@ -78,7 +76,6 @@ do:
             skillId: skl_eval_mock_bank_statement
             revisionId: skr_eval_mock_bank_statement_v1
             path: scripts/verify_mock_bank_ows_v1.py
-            digest: sha256:5df4496a476a5951bc0da648bc977adb87aee91f28ed9b065d7a008d482f4dc8
           entrypoint: verify_statement
           runtime:
             language: python

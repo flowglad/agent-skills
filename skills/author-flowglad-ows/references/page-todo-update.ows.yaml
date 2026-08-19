@@ -40,7 +40,6 @@ do:
             kind: space-file
             spaceId: spc_eval_page_todo
             path: page_todo_update_ows_v1.py
-            digest: sha256:eec582e45dd36187b3536faa7c9d9885b3bd627ddc73d5af677b2be7a1453ecc
           entrypoint: build_todo_update
           runtime:
             language: python

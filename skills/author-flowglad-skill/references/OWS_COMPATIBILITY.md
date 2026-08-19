@@ -31,7 +31,6 @@ with:
       skillId: skl_exact
       revisionId: skr_exact
       path: scripts/reconcile.py
-      digest: sha256:exact_verified_manifest_digest
     entrypoint: reconcile
     runtime:
       language: python
@@ -50,4 +49,4 @@ Before handoff, report these states separately:
 1. Native-Python CLI tests and smoke checks passed locally.
 2. The Skill revision passed Flowglad verification.
 3. The OWS compiler accepted the `skill-revision` resource and selected function.
-4. OWS publication resolved the exact verified manifest digest, if publication was requested.
+4. OWS publication resolved the exact verified revision and derived its manifest and selected file digests, if publication was requested.
