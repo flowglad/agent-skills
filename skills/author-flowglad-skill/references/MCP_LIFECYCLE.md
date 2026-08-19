@@ -2,6 +2,14 @@
 
 Use this reference when Flowglad MCP exposes the versioned Skill tools.
 
+## Permissions
+
+Creating or updating a Skill requires an MCP grant with the organization-level
+`skills:write` permission. A Space-scoped create or any candidate update also
+requires read and update access to the selected Skill's Space. If the tools are
+visible but a write is denied, report the missing authorization instead of
+changing the package or retrying the same request.
+
 ## Discover before writing
 
 1. Call `skills.list` to find visible Skills.

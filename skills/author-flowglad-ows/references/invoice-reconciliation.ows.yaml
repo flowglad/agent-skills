@@ -51,7 +51,6 @@ do:
             kind: space-file
             spaceId: spc_eval_invoice_reconciliation
             path: invoice_reconciliation_ows_v1.py
-            digest: sha256:530d711f908d10be5f49b84e7b21f5b2a7bae779b926a3370a2bc8c72b668e44
           entrypoint: prepare_reconciliation
           runtime:
             language: python
@@ -66,6 +65,9 @@ do:
                   - name: get
                     method: GET
                     pathTemplate: /invoices/{{invoice_id}}
+                    queryTemplate:
+                      - name: include
+                        value: line_items
                     bodyTemplate: null
                     parameterSchema:
                       type: object
@@ -131,7 +133,6 @@ do:
             kind: space-file
             spaceId: spc_eval_invoice_reconciliation
             path: invoice_reconciliation_ows_v1.py
-            digest: sha256:530d711f908d10be5f49b84e7b21f5b2a7bae779b926a3370a2bc8c72b668e44
           entrypoint: build_reconciliation_dag
           runtime:
             language: python

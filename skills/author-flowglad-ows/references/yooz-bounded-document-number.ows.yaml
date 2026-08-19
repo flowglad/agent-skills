@@ -62,7 +62,6 @@ do:
             kind: space-file
             spaceId: spc_eval_yooz_two_proposal_attachment_plan
             path: yooz_ows_v1.py
-            digest: sha256:f2b4835baf6e4e33241e5d1e861585bc8d7cd71b1a40626605996c59b483b54c
           entrypoint: normalize_invoice_context
           runtime:
             language: python
@@ -118,7 +117,7 @@ do:
 
   - build-attachment-dag:
       input:
-        from: '${ $context.inference }'
+        from: '${ $context.normalized + $context.inference }'
       call: code:1.0.0@flowglad
       with:
         fg:
@@ -126,7 +125,6 @@ do:
             kind: space-file
             spaceId: spc_eval_yooz_two_proposal_attachment_plan
             path: yooz_ows_v1.py
-            digest: sha256:f2b4835baf6e4e33241e5d1e861585bc8d7cd71b1a40626605996c59b483b54c
           entrypoint: build_attachment_dag
           runtime:
             language: python
@@ -134,6 +132,10 @@ do:
             memoryMb: 128
           terminal:
             kind: command-dag
+            connections:
+              - connectionId: dsrc_yooz
+                as: yooz
+                connector: yooz
       timeout:
         after: PT10S
       output:

@@ -128,39 +128,72 @@ for direct inspection outside entrypoint binding.
 
 Consumed artifact objects expose `path`, `media_type`, `size_bytes`, `digest`,
 `open()`, `read_bytes()`, `read_text()`, and `read_json()`. Produced artifact
-objects expose `path`, `media_type`, `max_bytes`, `expected_digest`, `open()`,
-`write_bytes()`, `write_text()`, and `write_json()`. JSON helpers require
+objects expose `path`, `media_type`, `max_bytes`, `open()`, `write_bytes()`,
+`write_text()`, and `write_json()`. JSON helpers require
 `application/json`; text helpers use UTF-8. An input has no write methods, and
 an output has no read methods. `path` is available for APIs that require a path,
 but ordinary reads and writes use the object methods.
 
 On exit, every declared output is required and is checked for containment,
-type, size, and any authored digest; the executor then computes its actual
-SHA-256 digest. An undeclared file in the task's artifact output directory
+type, and size; the executor computes and records its actual SHA-256 digest.
+An undeclared file in the task's artifact output directory
 fails admission. Scratch files elsewhere are not published.
 
 ## Command DAG construction
 
 Every code task installs the pure `flowglad.commands` construction module. Its
-helpers return ordinary JSON-compatible dictionaries and do not grant terminal
-authority. The task's `terminal` declaration and output schema still determine
-whether the executor accepts a command DAG proposal.
+core helpers return ordinary JSON-compatible dictionaries and do not grant
+terminal authority. A task with a compiler-sealed `terminal` declaration also
+receives one standalone function for every static non-connector command node.
+The task's `terminal` declaration and output schema still determine whether the
+executor accepts a command DAG proposal.
 
+The sealed SDK is exhaustive for the command node types available to that
+terminal task:
+
+| Available node type | Author-facing constructor |
+| --- | --- |
+| Static non-connector command | Standalone `flowglad.commands.<tag_as_snake_case>(**fields)` |
+| Connector-provided command | `flowglad.connections.<alias>.<tag_as_snake_case>(**fields)` |
+| Untyped browser order | `flowglad.connections.<alias>.order(**order_fields)` |
+
+Static constructors require terminal authority. Connection methods also
+require the compiler-sealed connection declaration. Every synthetic constructor
+seals its tag, and connection-bound constructors additionally seal
+`connection_id`; author code supplies only command payload fields.
+
+<!-- static-command-constructor-example:start -->
 ```python
-from flowglad.commands import command, command_dag
+from flowglad.commands import command_dag, publish_flowglad_files
 
-proposal = command_dag(
-    command("create-yooz-attachment", documentNumber="DOC-123"),
-    title="Attach Yooz document",
-    reasoning_summary="Attach the bounded Yooz document.",
-)
+
+def propose_files():
+    published = publish_flowglad_files(
+        files=["close-report.md"],
+        outputs=[{"path": "close-report.md", "render": "inline_markdown"}],
+    )
+    return command_dag(
+        published,
+        title="Publish close report",
+        reasoning_summary="Propose publishing the reviewed close report.",
+    )
 ```
+<!-- static-command-constructor-example:end -->
+
+The compiler currently derives `publish_flowglad_files`,
+`create_flowglad_page`, and `edit_flowglad_page` from the shared static command
+registry. Each direct constructor accepts command payload fields as kwargs,
+seals the tag, and rejects `connection_id`, `data_source_id`, `dependsOn`,
+`outputRefs`, and `secretRefs`. `command_file_name` overrides the generated JSON
+basename without consuming an ordinary payload field named `file_name`.
 
 `command(tag, data=None, *, file_name=None, **fields)` creates one immutable
-command declaration. Keyword fields become `commandData` fields. The optional
-mapping form supports field names that are not Python identifiers or that match
-helper parameter names. The default filename is `<tag>.json`; `file_name`
-supplies a different JSON basename.
+command declaration as a low-level compatibility escape hatch for legacy or
+custom tags that have no generated constructor. Do not use it to hand-author an
+available static, connector, or browser-order node. Keyword fields become
+`commandData` fields. The optional mapping form supports field names that are
+not Python identifiers or that match helper parameter names. The default
+filename is `<tag>.json`; `file_name` supplies a different JSON basename.
 
 `command_dag(*commands, title, reasoning_summary, edges=())` assigns
 zero-based positions in argument order and returns the complete terminal value.
@@ -175,11 +208,133 @@ The helpers enforce their construction invariants, including unique filenames,
 and forward-only edges. The executor remains the authority for the task output
 schema, terminal DAG schema, command schemas, and approval boundary.
 
+### Connection-bound connector proposals
+
+A terminal connection declaration installs its immutable alias in
+`flowglad.connections` without granting an authenticated read or creating a
+host bridge. The compiler seals one pure Python constructor method for every
+command node declared by that connector. A command tag maps to its method name
+by replacing hyphens with underscores, such as `send-slack-message` →
+`send_slack_message`.
+
+Helper-command kwargs become command-root fields:
+
+```python
+from flowglad.commands import command_dag
+from flowglad.connections import slack
+
+
+def propose_message():
+    message = slack.send_slack_message(
+        channel_id="C012345",
+        text="The reconciliation is ready for review.",
+    )
+    return command_dag(
+        message,
+        title="Send reconciliation notice",
+        reasoning_summary="Propose one reviewed Slack message.",
+    )
+```
+
+Command-family methods keep their selector at the command root and accept the
+provider payload as flattened kwargs. The SDK nests those kwargs under the
+connector-declared payload field:
+
+<!-- quickbooks-constructor-example:start -->
+```python
+from flowglad.commands import command_dag
+from flowglad.connections import quickbooks
+
+
+def propose_expense():
+    expense = quickbooks.create_qbo_entity(
+        object_kind="expense",
+        AccountRef={"value": "42"},
+        TotalAmt=19.95,
+    )
+    return command_dag(
+        expense,
+        title="Create QuickBooks expense",
+        reasoning_summary="Propose one reviewed expense.",
+    )
+```
+<!-- quickbooks-constructor-example:end -->
+
+`create_qbo_entity(*, object_kind, command_file_name=None, **business_fields)`
+emits exactly this `commandData`:
+
+```json
+{
+  "tag": "create-qbo-entity",
+  "connection_id": "dsrc_documented_qbo",
+  "object_kind": "expense",
+  "payload": {"AccountRef": {"value": "42"}, "TotalAmt": 19.95}
+}
+```
+
+`object_kind` is the required root selector. Every other business keyword is
+nested under `payload`, except connector-declared root fields such as QBO's
+optional `target` mapping overlay. Helper-command methods keep every supplied
+command field at the root. `command_file_name` overrides the generated JSON
+basename when a DAG contains multiple nodes with the same tag; a business field
+named `file_name` remains an ordinary command kwarg. Callers cannot supply
+`tag`, `connection_id`, `data_source_id`, `dependsOn`, `outputRefs`, or
+`secretRefs`; those command-envelope fields are rejected rather than
+overridden. Construction is pure: it proposes an approval-bound command and
+never dispatches a provider operation.
+
+### Untyped browser-order proposals
+
+An Untyped terminal connection exposes one dynamic `order` constructor. The
+compiler seals the typed tag from the connection ID and the SDK seals the same
+ID into `connection_id`.
+
+<!-- untyped-browser-order-example:start -->
+```python
+from flowglad.commands import command_dag
+from flowglad.connections import vendor_portal
+
+
+def propose_browser_order():
+    browser_order = vendor_portal.order(
+        version="2",
+        title="Submit vendor invoice",
+        login_account_id="lacc_vendor_portal",
+        slots={},
+        steps=[
+            {
+                "kind": "act",
+                "id": "submit_invoice",
+                "title": "Submit invoice",
+                "effect": "write",
+                "description": "Submit the reviewed invoice",
+                "intent": "submit",
+            }
+        ],
+    )
+    return command_dag(
+        browser_order,
+        title="Submit vendor invoice",
+        reasoning_summary="Propose reviewed browser work on the selected portal.",
+    )
+```
+<!-- untyped-browser-order-example:end -->
+
+For `connectionId: dsrc_browser_portal`, `order(...)` emits
+`tag: "order_dsrc_browser_portal"` and
+`connection_id: "dsrc_browser_portal"`. Callers cannot override either field.
+The remaining typed browser-order DSL fields stay at the command root.
+`login_account_id` is supplied only when the admitted connection requires the
+exact configured login account; connections backed by an active browser session
+without a required login account omit it. The downstream typed command schema
+enforces that conditional identity rule.
+
 ## Exact authenticated reads
 
 When the sealed code sidecar declares `exactAuthentication`, startup installs
 the task-scoped `flowglad.connections` module. Each declared alias exposes only
-its declared actions:
+its declared actions. If the same compiler-validated identity is also declared
+as a terminal connection, one immutable alias exposes both surfaces:
 
 ```python
 from flowglad.connections import invoices
@@ -191,11 +346,17 @@ Pagination is operation-specific. When an action supports another page, its
 parameter schema names the provider continuation value explicitly, such as a
 cursor, offset, or page index.
 
+GET actions may seal ordered query-parameter templates alongside their path.
+Resource code still passes only the action parameter object; the host
+materializes declared query placeholders and delegates URL encoding to the
+authenticated-fetch service. Resource code does not concatenate query strings.
+
 The private bridge rejects an undeclared connection/action pair or invalid
 parameter schema before host dispatch. It enforces sealed call, response-byte,
 cumulative-byte, and wall-time budgets and validates the host result schema. The
-child receives neither credentials nor the general host socket. Without
-`exactAuthentication`, the executor installs no `flowglad.connections` module.
+child receives neither credentials nor the general host socket. Without either
+`exactAuthentication` or a terminal connection declaration, the executor
+installs no `flowglad.connections` module.
 When neither connection nor Page access is declared, it installs no private
 socket environment. The executor never installs a top-level `connections`
 compatibility alias.

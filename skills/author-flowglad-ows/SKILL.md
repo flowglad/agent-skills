@@ -12,7 +12,7 @@ Create the canonical OWS source for a Flowglad automation.
 1. Gather the intended workflow inputs, outputs, tasks, dataflow, artifacts, external systems, reusable capabilities, and side effects.
 2. Read `references/AUTHORING.md` completely before writing or revising a program. Treat it as the authoritative Flowglad profile reference.
 3. For every code capability, read `references/SKILL_RESOURCES.md` and resolve an exact OWS-compatible verified Skill revision when possible.
-4. If a required reusable capability is missing and `author-flowglad-skill` is available, use it to author and verify a package whose selected source also satisfies the OWS code ABI. Resume OWS authoring only after resolving the exact revision, module path, manifest digest, and selected function name.
+4. If a required reusable capability is missing and `author-flowglad-skill` is available, use it to author and verify a package whose selected source also satisfies the OWS code ABI. Resume OWS authoring only after resolving the exact revision, module path, and selected function name.
 5. Use a `space-file` code resource only when the user requests direct Space code, the Skill lifecycle is unavailable, or the code is intentionally automation-specific. Read `references/CODE_ABI.md` completely before writing or revising direct Python source.
 6. Inspect the closest complete example when the workflow needs one:
    - Read `references/skill-backed-code.ows.yaml` for the preferred verified Skill-revision resource shape.
@@ -28,13 +28,13 @@ Create the canonical OWS source for a Flowglad automation.
 
 ## Resource integrity
 
-- Never invent Flowglad IDs, source IDs, file digests, Skill revision identities, connection authorities, or browser-auth data sources.
+- Never invent Flowglad IDs, source identities, Skill revision identities, connection authorities, or Website Access connections.
 - Resolve exact values from user-provided context or available Flowglad tools.
 - Prefer active or verified immutable Skill revisions over mutable Space files for reusable code.
-- Do not infer OWS compatibility from Skill verification alone. OWS publication separately validates the selected function declaration and exact manifest digest.
+- Do not infer OWS compatibility from Skill verification alone. OWS publication separately validates the selected function declaration and derives the immutable Skill manifest and file digests.
 - Leave an obvious placeholder when an exact value is unavailable and list it in the handoff.
-- Recompute every SHA-256 digest after changing `space-file` bytes. Resolve a Skill resource digest from its verified revision manifest.
-- Do not claim publication readiness until every organization-scoped resource is accessible and digest-matched.
+- Treat `space-file` code as live source: each run resolves and snapshots its current bytes once for that run.
+- Do not claim publication readiness until every organization-scoped resource is accessible and every selected Skill revision and function validates.
 
 ## Profile guardrails
 
@@ -55,7 +55,7 @@ Return:
 
 - The complete `.ows.yaml` document.
 - Every required companion Python file only for selected `space-file` resources.
-- Every pinned Skill ID, revision ID, module path, manifest digest, and selected OWS function.
-- All unresolved identifiers, digests, and publication dependencies.
+- Every pinned Skill ID, revision ID, module path, and selected OWS function.
+- All unresolved identifiers, resources, and publication dependencies.
 - The exact validation performed and diagnostics remaining.
 - Skill verification, OWS publication, activation, and execution status without conflating them.
