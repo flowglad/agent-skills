@@ -1,3 +1,3 @@
 # Replace me
 
-Run the declared `transform` entrypoint with one explicit string argument. Read the JSON result from stdout.
+Use the selected `transform` OWS function to normalize the injected `value` field and return a JSON object containing `result`.

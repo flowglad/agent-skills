@@ -1,6 +1,6 @@
 # Flowglad Skill package contract
 
-Use this reference when authoring files or native-Python entrypoint declarations for a versioned Flowglad Skill.
+Use this reference when authoring a versioned Flowglad Skill.
 
 ## Package layout
 
@@ -14,7 +14,7 @@ Every package contains exactly-cased `meta.json` metadata and `SKILL.md` instruc
 | `scripts/**` | `script` | Executable Python |
 | `references/**` | `reference` | Instructions loaded as needed |
 | `assets/**` | `asset` | Fixtures and output templates |
-| `tests/**` | `test` | Directly executable tests |
+| `tests/**` | `test` | OWS JSON cases or legacy executable tests |
 
 Paths are relative POSIX paths. Do not use backslashes, NUL, absolute paths, empty segments, `.` segments, or `..` segments. Paths must not collide after Unicode normalization and case folding. A `files/**` member must not map to the same visible path as another support member.
 
@@ -45,7 +45,15 @@ Do not add other properties.
 
 Write Markdown instructions without YAML frontmatter; versioned Flowglad Skill metadata belongs only in `meta.json`. Keep the instructions focused on how an agent should use the packaged capability. Put large domain references in `references/` and reusable execution in `scripts/`.
 
-## Native-Python CLI entrypoints
+## OWS-native Python
+
+Default new executable packages to the OWS verification profile. Put selected functions under `scripts/**.py`, use the function contract in `OWS_COMPATIBILITY.md`, and keep lifecycle `entrypoints` empty. Put synthetic `flowglad-ows-code-test-v1` JSON cases under `tests/**.json`.
+
+The verifier selects the OWS profile when a script explicitly imports the Flowglad runtime and exposes an admitted function, or when the package contains an OWS JSON test case. It compiles Python, validates selected-function interfaces, loads modules with the OWS execution bindings, and executes the JSON cases through the zero-argument runtime ABI.
+
+## Legacy CLI entrypoints
+
+Use CLI entrypoints only when explicitly maintaining a legacy package. Do not combine CLI markers such as `sys.argv`, `argparse`, or `__main__` with OWS-native source.
 
 Entrypoint declarations are lifecycle metadata, not package files. Each entrypoint has:
 
@@ -90,9 +98,9 @@ Scripts send their declared result to stdout and diagnostics to stderr. Make the
 Flowglad verification runs automatically after candidate creation:
 
 1. `structure`: package paths, roles, limits, metadata, instructions, and asset projection.
-2. `syntax`: Python compilation for scripts and tests.
-3. `interface`: entrypoint and smoke-argument consistency.
-4. `smoke`: exact script invocation plus output checks.
-5. `tests`: every declared test path executed directly.
+2. `syntax`: Python compilation.
+3. `interface`: the selected OWS function or legacy CLI declarations.
+4. `smoke`: OWS module loading or the legacy CLI smoke invocation.
+5. `tests`: OWS JSON cases or declared legacy test paths.
 
 Successful local execution is useful preflight but never substitutes for the server verification record.

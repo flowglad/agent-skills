@@ -1,5 +1,7 @@
 # Flowglad OWS profile v1 code ABI
 
+> Generated from `flowglad/provisioning-agent@53a6e5f3c888c08b5c564dff9c76adfaf05f8cd3` (`packages/workflow-executor/CODE_ABI.md`). Do not edit this exported file directly.
+
 This is the author contract for `code:1.0.0@flowglad`. Each task declares one
 public top-level function in a sealed Python 3.11 resource. The executor imports
 the resource in an argv-based child with empty stdin and invokes the function
@@ -95,7 +97,8 @@ that those declarations do not express.
 | Runtime-module construction and the admitted task state behind every exported value. | The declared entrypoint function and its task-specific behavior. |
 | Task input and function-return shapes against their declared OWS schemas. | Semantic and cross-field invariants that the schemas do not express, such as an exact match count or a required relationship between values. |
 | Consumed and produced artifact containment, media type, size, digest, declaration, and completeness. | Domain meaning inside artifact content when that meaning matters to the workflow. |
-| Connection/action and Page admission, result schemas, and call/byte/time budgets. | Which admitted read to call and whether its result is meaningful, consistent, complete, and unambiguous for the business operation. |
+| Connection/action, Page, and pinned MCP-read admission; declared result schemas; and call/byte/time budgets. | Which admitted read to call and whether its result is meaningful, consistent, complete, and unambiguous for the business operation. |
+| MCP command literal identity (`connection_id`, `operation_id`, catalog/schema/operation hashes) and terminal-DAG validation. | The MCP command `arguments` object and the business reason to propose it. |
 | Function-return serialization, strict JSON stdout, exit status, process bounds, timeout/cancellation, and declared terminal command-DAG structure. | The returned business value and the decision to raise when a business invariant does not hold. |
 
 Resource code does not repeat runtime-module shape checks, rebind connection
@@ -199,10 +202,45 @@ filename is `<tag>.json`; `file_name` supplies a different JSON basename.
 zero-based positions in argument order and returns the complete terminal value.
 The executor associates the proposal with its authoritative workflow run; the
 script does not supply runtime identity.
+
+Every command declaration exposes an immutable `output` namespace. Pass a
+prior command's output field directly as a later command's top-level input to
+infer the data edge without repeating either command filename or the output
+field as a string:
+
+```python
+from flowglad.commands import command_dag, publish_flowglad_files
+from flowglad.connections import gmail
+
+publish = publish_flowglad_files(files=["report.pdf"])
+draft = gmail.create_gmail_draft(
+    to=["recipient@example.com"],
+    subject="Report",
+    attachment_file_ids=[file.file_id for file in publish.output.flowglad_files],
+)
+return command_dag(
+    publish,
+    draft,
+    title="Publish and attach report",
+    reasoning_summary="Attach the newly published report.",
+)
+```
+
+For `publish_flowglad_files`, the SDK exposes the structured `flowglad_files`
+collection rather than the executor's internal canonical-ID projection. The
+shown comprehension is symbolic: `command_dag` lowers it to the canonical ID
+array, omits the unresolved target field from `commandData`, and emits a data
+edge from `publish-flowglad-files.json` to the draft's `attachment_file_ids`
+field. Each symbolic file exposes `file_id`, `storage_path`, `file_name`, and
+nullable `content_type`; the canonical-ID projection shown above is the
+supported collection projection for command inputs. Output fields that are not
+valid Python attribute names can use item access, such as
+`source.output["provider-field"]`.
 `ordering_edge(source, target)` expresses execution order. `data_edge(source,
 target, output_field=..., target_field=...)` also binds a source result field to
-a target input field. Edges reference command declarations directly, so author
-code does not repeat generated filenames.
+a target input field; keep this explicit form for dotted or indexed target
+paths. Edges reference command declarations directly, so author code does not
+repeat generated filenames.
 
 The helpers enforce their construction invariants, including unique filenames,
 and forward-only edges. The executor remains the authority for the task output
@@ -282,6 +320,55 @@ named `file_name` remains an ordinary command kwarg. Callers cannot supply
 `secretRefs`; those command-envelope fields are rejected rather than
 overridden. Construction is pure: it proposes an approval-bound command and
 never dispatches a provider operation.
+
+### Pinned MCP reads and command proposals
+
+`mcpAccess` installs only the pinned read methods declared for a connection
+alias. A read always takes one keyword-only JSON object, and the executor sends
+the generated `mcp-read.request` host frame before accepting only the matching
+`mcp-read.response` result:
+
+<!-- mcp-read-command-example:start -->
+```python
+from flowglad.commands import command_dag
+from flowglad.connections import billing
+
+
+def propose_mcp_invoice():
+    invoices = billing.list_invoices(arguments={"limit": 10})
+    if not invoices["items"]:
+        raise ValueError("The pinned MCP read returned no invoices")
+    invoice = billing.create_invoice(arguments={"customer_id": "cus_reviewed", "amount": 19.95})
+    return command_dag(
+        invoice,
+        title="Create reviewed invoice",
+        reasoning_summary="Use a pinned MCP read before proposing a pinned command.",
+    )
+```
+<!-- mcp-read-command-example:end -->
+
+The corresponding terminal constructor emits exactly this command-data shape;
+the five identity fields are copied from the compiler-sealed declaration rather
+than accepted from Python:
+
+```json
+{
+  "tag": "mcp-command-invoices-create-77bb32c75d4c",
+  "connection_id": "dsrc_billing",
+  "operation_id": "invoices.create",
+  "catalog_revision_id": "mcrv_billing_v1",
+  "schema_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "operation_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "arguments": {"customer_id": "cus_reviewed", "amount": 19.95}
+}
+```
+
+Both MCP reads and MCP command constructors require `arguments={...}`.
+Flattened kwargs are rejected, as are attempts to provide the reserved command
+envelope or pinned fields. For commands, `command_file_name` is the only other
+accepted keyword. The read bridge validates declared input and optional output
+schemas, budgets the result, and rechecks active catalog revision, schema hash,
+operation hash, admission, and connection identity before provider I/O.
 
 ### Untyped browser-order proposals
 

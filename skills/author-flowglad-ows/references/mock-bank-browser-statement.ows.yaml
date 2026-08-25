@@ -1,3 +1,4 @@
+# Generated from `flowglad/provisioning-agent@53a6e5f3c888c08b5c564dff9c76adfaf05f8cd3` (`packages/workflow-compiler/examples/mock-bank-browser-statement.ows.yaml`). Do not edit this exported file directly.
 document:
   dsl: '1.0.3'
   namespace: flowglad-evals
@@ -11,11 +12,6 @@ document:
   metadata:
     fg:
       profile: https://flowglad.com/ows/profiles/automation/v1
-      requiredExtensions:
-        - https://flowglad.com/ows/extensions/capabilities/v1
-        - https://flowglad.com/ows/extensions/runtime-profile/v1
-        - https://flowglad.com/ows/extensions/artifacts/v1
-        - https://flowglad.com/ows/extensions/terminal-command-dag/v1
 
 use:
   catalogs:
@@ -41,10 +37,7 @@ do:
           profile:
             id: mock_bank_browser_profile
             connectionId: dsrc_mock_bank
-            promptIdentity: mock-bank/login@v1
-            vendorSkillIdentity: mock-bank/extract_statement@v1
-            toolSetIdentity: web-agent-tools-v1
-            modelRoute: web-agent
+            instructions: Download the May sample statement as a PDF.
             maxSteps: 20
           produces:
             - name: statement-pdf
@@ -73,14 +66,9 @@ do:
         fg:
           resource:
             kind: skill-revision
-            skillId: skl_eval_mock_bank_statement
             revisionId: skr_eval_mock_bank_statement_v1
             path: scripts/verify_mock_bank_ows_v1.py
           entrypoint: verify_statement
-          runtime:
-            language: python
-            version: '3.11'
-            memoryMb: 128
           consumes:
             - statement-pdf
           terminal:

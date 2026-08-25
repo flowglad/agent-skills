@@ -1,0 +1,13 @@
+{
+  "kind": "flowglad-ows-code-test-v1",
+  "entrypoint": {
+    "path": "scripts/main.py",
+    "function": "transform"
+  },
+  "input": {
+    "value": " example "
+  },
+  "expectedSubset": {
+    "result": "example"
+  }
+}

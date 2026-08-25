@@ -1,0 +1,108 @@
+# Generated from `flowglad/provisioning-agent@53a6e5f3c888c08b5c564dff9c76adfaf05f8cd3` (`packages/workflow-compiler/examples/mcp-ows-v1.ows.yaml`). Do not edit this exported file directly.
+document:
+  dsl: '1.0.3'
+  namespace: flowglad-evals
+  name: mcp-ows-v1
+  version: '1.0.0'
+  title: Pinned MCP read and command proposal
+  summary: >-
+    Canonical OWS program that reads an admitted MCP operation and proposes a
+    pinned MCP command for approval.
+  metadata:
+    fg:
+      profile: https://flowglad.com/ows/profiles/automation/v1
+      requiredExtensions:
+        - https://flowglad.com/ows/extensions/capabilities/v1
+        - https://flowglad.com/ows/extensions/runtime-profile/v1
+        - https://flowglad.com/ows/extensions/mcp-access/v1
+        - https://flowglad.com/ows/extensions/terminal-command-dag/v1
+
+use:
+  catalogs:
+    flowglad:
+      endpoint:
+        uri: https://flowglad.com/ows/catalogs/automation/v1
+
+input:
+  schema:
+    format: jsonschema:2020-12
+    document:
+      type: object
+      additionalProperties: false
+
+do:
+  - propose-mcp-command:
+      input:
+        from: '${ . }'
+      call: code:1.0.0@flowglad
+      with:
+        fg:
+          resource:
+            kind: space-file
+            path: mcp_ows_v1.py
+          entrypoint: propose_mcp_command
+          mcpAccess:
+            connections:
+              - connectionId: dsrc_mcp_billing
+                as: billing
+                reads:
+                  - name: list_invoices
+                    operationId: invoices.list
+                    toolName: list_invoices
+                    catalogRevisionId: mcrv_billing_v1
+                    schemaHash: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+                    operationHash: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+                    inputSchema:
+                      type: object
+                      additionalProperties: false
+                      properties:
+                        limit: {type: integer, minimum: 1, maximum: 10}
+                    outputSchema:
+                      type: object
+                      additionalProperties: false
+                      required: [items]
+                      properties:
+                        items:
+                          type: array
+                          items: {type: object}
+            limits:
+              maxCalls: 1
+              maxResponseBytes: 16384
+              maxCumulativeResponseBytes: 16384
+              maxWallTimeMs: 5000
+          terminal:
+            kind: command-dag
+            connections:
+              - connectionId: dsrc_mcp_billing
+                as: billing
+                connector: mcp
+                commands:
+                  - name: create_invoice
+                    operationId: invoices.create
+                    toolName: create_invoice
+                    catalogRevisionId: mcrv_billing_v1
+                    schemaHash: cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+                    operationHash: dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd
+                    inputSchema:
+                      type: object
+                      additionalProperties: false
+                      required: [customer_id, amount]
+                      properties:
+                        customer_id: {type: string}
+                        amount: {type: number}
+      timeout:
+        after: PT10S
+      output:
+        schema:
+          format: jsonschema:2020-12
+          document:
+            type: object
+      export:
+        as: '${ $context + { terminalDag: . } }'
+
+output:
+  as: '${ $context.terminalDag }'
+  schema:
+    format: jsonschema:2020-12
+    document:
+      type: object

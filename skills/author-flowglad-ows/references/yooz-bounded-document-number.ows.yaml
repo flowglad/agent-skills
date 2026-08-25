@@ -1,3 +1,4 @@
+# Generated from `flowglad/provisioning-agent@53a6e5f3c888c08b5c564dff9c76adfaf05f8cd3` (`packages/workflow-compiler/examples/yooz-bounded-document-number.ows.yaml`). Do not edit this exported file directly.
 document:
   dsl: '1.0.3'
   namespace: flowglad-evals
@@ -11,10 +12,6 @@ document:
   metadata:
     fg:
       profile: https://flowglad.com/ows/profiles/automation/v1
-      requiredExtensions:
-        - https://flowglad.com/ows/extensions/capabilities/v1
-        - https://flowglad.com/ows/extensions/runtime-profile/v1
-        - https://flowglad.com/ows/extensions/terminal-command-dag/v1
 
 use:
   catalogs:
@@ -60,13 +57,8 @@ do:
         fg:
           resource:
             kind: space-file
-            spaceId: spc_eval_yooz_two_proposal_attachment_plan
             path: yooz_ows_v1.py
           entrypoint: normalize_invoice_context
-          runtime:
-            language: python
-            version: '3.11'
-            memoryMb: 128
       timeout:
         after: PT10S
       output:
@@ -92,15 +84,11 @@ do:
         fg:
           profile:
             id: yooz_document_number
-            provider: anthropic
-            model: claude-sonnet-4-6
             systemPrompt: >-
               Use the supplied invoice context. Return only the document number
               visible in the invoice.
             instructions: >-
               Return document_number using only the supplied invocation input.
-            maxOutputTokens: 1024
-            maxResultBytes: 4096
       timeout:
         after: PT60S
       output:
@@ -123,13 +111,8 @@ do:
         fg:
           resource:
             kind: space-file
-            spaceId: spc_eval_yooz_two_proposal_attachment_plan
             path: yooz_ows_v1.py
           entrypoint: build_attachment_dag
-          runtime:
-            language: python
-            version: '3.11'
-            memoryMb: 128
           terminal:
             kind: command-dag
             connections:

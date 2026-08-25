@@ -1,27 +1,6 @@
 # Authoring Flowglad OWS programs
 
-> Generated public reference for `@fg/workflow-compiler` 0.1.0 and
-> Flowglad automation profile v1. Update the compiler-owned authoring reference;
-> do not edit this generated file directly.
-
-## Contents
-
-- [Start with this document](#start-with-this-document)
-- [What is standard OWS and what is Flowglad-specific?](#what-is-standard-ows-and-what-is-flowglad-specific)
-- [Required envelope](#required-envelope)
-- [Supported task shape](#supported-task-shape)
-- [Dataflow and conditions](#dataflow-and-conditions)
-- [Code calls](#code-calls)
-- [Inference calls](#inference-calls)
-- [Browser-agent calls](#browser-agent-calls)
-- [Artifacts](#artifacts)
-- [Authenticated connection actions](#authenticated-connection-actions)
-- [Flowglad Page access](#flowglad-page-access)
-- [Terminal command DAGs](#terminal-command-dags)
-- [Capabilities are derived](#capabilities-are-derived)
-- [Source identity, publication, and compatibility](#source-identity-publication-and-compatibility)
-- [Validation and diagnostics](#validation-and-diagnostics)
-- [Complete examples](#complete-examples)
+> Generated from `flowglad/provisioning-agent@53a6e5f3c888c08b5c564dff9c76adfaf05f8cd3` (`packages/workflow-compiler/AUTHORING.md`). Do not edit this exported file directly.
 
 This is the author reference for the Flowglad dialect of Open Workflow
 Specification (OWS). A Flowglad automation program is an OWS 1.0.3 workflow
@@ -34,13 +13,13 @@ representation.
 
 > **Execution status:** Flowglad validates and publishes these documents as
 > immutable revisions for the standalone OWS executor. Activation verifies the
-> exact bundle, closure, digests, and runtime identity. Routing is behind
-> the default-off, organization-allowlisted `schematized-automation-runtime`
-> feature flag, so compiler validity alone does not authorize execution.
+> exact bundle, closure, digests, and runtime identity. Compiler validity alone
+> does not authorize execution; the revision must also be activated.
 
 The normative upstream language is
 [OWS 1.0.3](https://open-workflow-specification.org/). This guide documents the
-additional restrictions and `fg` fields enforced by `@fg/workflow-compiler`.
+additional restrictions and `fg` fields enforced by
+`@fg/workflow-compiler`.
 
 ## Start with this document
 
@@ -55,9 +34,6 @@ document:
   metadata:
     fg:
       profile: https://flowglad.com/ows/profiles/automation/v1
-      requiredExtensions:
-        - https://flowglad.com/ows/extensions/capabilities/v1
-        - https://flowglad.com/ows/extensions/runtime-profile/v1
 
 use:
   catalogs:
@@ -84,13 +60,8 @@ do:
         fg:
           resource:
             kind: space-file
-            spaceId: spc_replace_me
             path: automations/normalize.py
           entrypoint: normalize
-          runtime:
-            language: python
-            version: '3.11'
-            memoryMb: 128
       timeout:
         after: PT30S
       output:
@@ -115,9 +86,9 @@ output:
         normalized: {type: boolean}
 ```
 
-Replace the resource identity with an actual resource visible to the
-automation's organization. The compiler accepts the shape; publication also
-checks that the resource is accessible and has a valid Python entrypoint.
+Replace the resource path with an actual Python file in the Automation's Space.
+The compiler accepts the shape; publication also checks that the resource is
+accessible and has a valid Python entrypoint.
 
 ## What is standard OWS and what is Flowglad-specific?
 
@@ -138,6 +109,7 @@ behavior that OWS does not define.
 | One file supplied by the triggering invocation | `document.metadata.fg.invocationArtifacts` |
 | File/JSON artifact identity and integrity | `with.fg.produces` and `with.fg.consumes` |
 | Authenticated connection actions | `with.fg.exactAuthentication` on a code call |
+| Pinned admitted MCP reads | `with.fg.mcpAccess` on a code call |
 | Exact Flowglad Page reads | `with.fg.pageAccess` on a code call |
 | Approval-bound terminal command proposal | `with.fg.terminal` on the final code call |
 | Security capabilities | Do not author them; the compiler derives them |
@@ -201,6 +173,7 @@ URIs:
 
 - `https://flowglad.com/ows/extensions/capabilities/v1`
 - `https://flowglad.com/ows/extensions/exact-authentication/v1`
+- `https://flowglad.com/ows/extensions/mcp-access/v1`
 - `https://flowglad.com/ows/extensions/page-access/v1`
 - `https://flowglad.com/ows/extensions/runtime-profile/v1`
 - `https://flowglad.com/ows/extensions/artifacts/v1`
@@ -210,6 +183,9 @@ URIs:
 
 List the extensions on which the program relies. An unknown required URI is a
 compile error rather than an instruction to ignore unfamiliar behavior.
+Programs that declare `mcpAccess` should include
+`https://flowglad.com/ows/extensions/mcp-access/v1` so an executor that does
+not understand pinned MCP reads fails before execution.
 
 ## Supported task shape
 
@@ -297,13 +273,8 @@ with:
   fg:
     resource:
       kind: space-file
-      spaceId: spc_123
       path: automations/reconcile.py
     entrypoint: reconcile
-    runtime:
-      language: python
-      version: '3.11'
-      memoryMb: 256
     consumes: []
     produces: []
 ```
@@ -313,30 +284,34 @@ The resource is one of:
 ```yaml
 # A Python file in a Space
 kind: space-file
-spaceId: spc_123
 path: automations/reconcile.py
 ```
 
 ```yaml
 # An exact Python module in a verified Skill revision
 kind: skill-revision
-skillId: skl_123
 revisionId: skr_123
 path: scripts/reconcile.py
 ```
 
 Space-file paths are normalized relative POSIX paths, must end in `.py`, and
-must not contain empty, `.`, or `..` segments. A Space file is intentionally
-live: each run resolves its current bytes, snapshots that version once for the
-run, and records the calculated SHA-256 digest internally. For a Skill,
-`revisionId` identifies the immutable verified revision manifest, while `path`
-selects the Python module inside that sealed bundle and must name a `.py` file
-under `scripts/`. Flowglad derives and verifies Skill manifest and file digests
-internally. The code task's `entrypoint` selects the public top-level function
-inside the module; Skill CLI entrypoint IDs do not participate in OWS execution.
+must not contain empty, `.`, or `..` segments. The path is always resolved in
+the Automation's owning Space; authors do not repeat that Space ID. A Space file
+is intentionally live: each run resolves its current bytes, snapshots that
+version once for the run, and records the calculated SHA-256 digest internally.
+For a Skill, `revisionId` identifies the immutable verified revision manifest.
+Flowglad derives its parent Skill identity and verifies organization and Space
+access; authors do not repeat `skillId`. `path` selects the Python module inside
+that sealed bundle and must name a `.py` file under `scripts/`. Flowglad derives
+and verifies Skill manifest and file digests internally. The code task's
+`entrypoint` selects the public top-level function inside the module; Skill CLI
+entrypoint IDs do not participate in OWS execution.
 
-The only profile-v1 runtime is Python 3.11. `memoryMb` is an integer from 64
-through 4096.
+Authors do not select or configure a code runtime. The compiler seals Flowglad's
+fixed Python 3.11 runtime and 128 MiB memory limit into every code task. An
+authored `runtime` field is rejected. If a task exceeds the fixed limit, the
+task fails; configurable runtime policy can be introduced later if operational
+evidence requires it.
 
 Each code task declares one public top-level Python function through
 `entrypoint`. A plain selected function must be synchronous and declare zero
@@ -408,23 +383,26 @@ with:
   fg:
     profile:
       id: extract_document_number
-      provider: anthropic
-      model: claude-sonnet-4-6
       systemPrompt: Return the document number.
       instructions: Use only the supplied task input.
-      maxOutputTokens: 1024
-      maxResultBytes: 4096
     consumes:
       - name: invoice-pdf
         as: invoice_pdf
     produces: []
 ```
 
-Profile v1 supports only `anthropic:claude-sonnet-4-6` for inference tasks. The
-compiler rejects every other provider/model pair before publication. The model,
-prompts, and bounds are part of the immutable profile digest. Put the result
-shape in the task's standard OWS `output.schema`; do not duplicate it under
-`with.fg`.
+Authors define the prompt identity and content; they do not select a provider,
+model, reasoning effort, output-token limit, or result-byte limit. At
+publication, Flowglad resolves those implementation details from its
+organization-scoped inference policy and seals them into the immutable task
+profile. This keeps executions reproducible while allowing Flowglad to operate
+and evolve model routing without exposing it as workflow configuration. Put the
+result shape in the task's standard OWS `output.schema`; do not duplicate it
+under `with.fg`.
+
+The authored profile is strict: `provider`, `model`, `reasoningEffort`,
+`maxOutputTokens`, and `maxResultBytes` are rejected if supplied. Update and
+republish older source documents instead of carrying those fields forward.
 
 An inference task may consume declared upstream artifacts through the same
 `with.fg.consumes` contract as a code task. The executor admits and copies each
@@ -446,10 +424,7 @@ with:
     profile:
       id: download_statement
       connectionId: dsrc_123
-      promptIdentity: bank/login@v1
-      vendorSkillIdentity: bank/download_statement@v1
-      toolSetIdentity: web-agent-tools-v1
-      modelRoute: web-agent
+      instructions: Download the requested statement as a PDF.
       maxSteps: 20
     consumes: []
     produces: []
@@ -463,9 +438,11 @@ authors never provide an origin, authentication strategy, or `loginAccountId`.
 
 Browser navigation may follow ordinary public HTTPS redirects, including
 cross-origin identity-provider redirects. Credential access remains limited to
-the selected connection. The connection, prompt, vendor skill, tool set, model
-route, and step bound are sealed into the task profile. `maxSteps` is an integer
-from 1 through 100.
+the selected connection. The connection, authored instructions, and step bound
+are sealed into the task profile. The host automatically loads a vendor skill
+matching the resolved start URL when one is available. If no vendor skill
+matches, the browser agent runs with its generic safety prompt and the authored
+instructions. `maxSteps` is an integer from 1 through 100.
 
 ## Artifacts
 
@@ -473,15 +450,13 @@ from 1 through 100.
 
 An existing file in the Program's Space can enter the workflow as an initial
 artifact. Declare each required exact Space-visible path once in document
-metadata and require the Space-file-input extension:
+metadata:
 
 ```yaml
 document:
   metadata:
     fg:
       profile: https://flowglad.com/ows/profiles/automation/v1
-      requiredExtensions:
-        - https://flowglad.com/ows/extensions/space-file-inputs/v1
       inputFiles:
         - name: invoice-pdf
           path: inputs/invoice.pdf
@@ -513,17 +488,14 @@ resource whose `kind: space-file` selects a live Python module.
 ### Invocation artifact input
 
 An Inbox-triggered Program can require one file from the triggering email as an
-initial artifact. Require both artifact extensions and declare its stable OWS
-reference name, expected media type, and byte bound:
+initial artifact. Declare its stable OWS reference name, expected media type,
+and byte bound:
 
 ```yaml
 document:
   metadata:
     fg:
       profile: https://flowglad.com/ows/profiles/automation/v1
-      requiredExtensions:
-        - https://flowglad.com/ows/extensions/artifacts/v1
-        - https://flowglad.com/ows/extensions/invocation-artifacts/v1
       invocationArtifacts:
         - name: invoice-pdf
           mediaType: application/pdf
@@ -657,8 +629,15 @@ Rules enforced at compilation include:
   preserved, and the authenticated-fetch service URL-encodes every name and
   materialized value. URL encoding does not escape a provider-specific query
   language, so its parameter schema must constrain any value embedded in one.
-- A `GET` action has `bodyTemplate: null`. A POST action requires a body and
-  cannot declare query parameters in profile v1.
+- A `GET` action has `bodyTemplate: null` and does not declare `bodyKind`. A
+  POST action requires a body and cannot declare query parameters in profile
+  v1. POST bodies default to `bodyKind: json` when the field is omitted.
+- A read-only GraphQL POST declares `bodyKind: graphql`. Its `bodyTemplate`
+  contains `query` plus optional `variables` and `operationName`; after exact
+  placeholder substitution, the host materializes the authenticated-fetch
+  GraphQL body. The provider adapter still parses the document and rejects
+  mutations, subscriptions, unsupported multi-operation documents, or unsafe
+  variables before dispatch.
 - There are at most 128 connections, 128 total actions, and 128 calls.
   Per-response bytes are at most 2 MiB, cumulative bytes at most 16 MiB, and
   wall time is at most 120 seconds. The cumulative response bound is not lower
@@ -678,6 +657,36 @@ invoice = invoices.get({"invoice_id": "inv_123"})
 Python supplies only the declared action parameters. It does not concatenate
 URLs or encode query strings; the host materializes the sealed path and query
 templates before dispatching the authenticated request.
+
+For example, a declared Shopify Admin GraphQL query uses an explicitly typed
+body while keeping the query and variables bounded by the parameter schema:
+
+```yaml
+name: inventory_quantities
+method: POST
+pathTemplate: /admin/api/2026-07/graphql.json
+queryTemplate: []
+bodyKind: graphql
+bodyTemplate:
+  query: '{{query}}'
+  variables:
+    ids: '{{ids}}'
+  operationName: InventoryQuantities
+parameterSchema:
+  type: object
+  additionalProperties: false
+  required: [query, ids]
+  properties:
+    query: {type: string}
+    ids:
+      type: array
+      minItems: 1
+      maxItems: 25
+      items: {type: string}
+resultSchema:
+  type: object
+  additionalProperties: true
+```
 
 The module exists only for a code task with `exactAuthentication`. Import
 connection aliases only from `flowglad.connections`; the runtime exposes no
@@ -727,6 +736,69 @@ observation identity so approval preview and execution can verify it.
 `flowglad.pages` exists only when `pageAccess` is declared. The runtime exposes
 no top-level `pages` compatibility alias.
 
+## Pinned MCP access
+
+Only a code call may declare MCP reads. `mcpAccess` pins an admitted operation
+to a connection, catalog revision, input schema, and operation hash; it never
+contains transport or credential material. Its limits are required and bound
+all reads in that task. `maxResponseBytes` is capped at 262144 bytes, while the
+cumulative response limit cannot be lower than the per-call limit.
+
+```yaml
+with:
+  fg:
+    # resource and entrypoint omitted
+    mcpAccess:
+      connections:
+        - connectionId: dsrc_billing
+          as: billing
+          reads:
+            - name: list_invoices
+              operationId: invoices.list
+              toolName: list_invoices
+              catalogRevisionId: mcrv_billing_v1
+              schemaHash: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+              operationHash: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+              inputSchema:
+                type: object
+                additionalProperties: false
+                properties:
+                  limit: {type: integer, minimum: 1, maximum: 10}
+              outputSchema: # optional; validated when present
+                type: object
+                required: [items]
+                properties:
+                  items: {type: array}
+      limits:
+        maxCalls: 2
+        maxResponseBytes: 16384
+        maxCumulativeResponseBytes: 32768
+        maxWallTimeMs: 5000
+```
+
+`as` is the task-local Python connection alias, `name` is the Python method on
+that alias, and `operationId` is the immutable catalog operation identity.
+`toolName`, `catalogRevisionId`, `schemaHash`, `operationHash`, and
+`inputSchema` are required pins; `outputSchema` is optional because admitted
+MCP servers may omit it. Connection aliases and method names must be lowercase
+Python identifiers, and a method name cannot be shared with another declared
+read or terminal command on that alias.
+
+Python calls only the sealed method with one `arguments` object:
+
+```python
+from flowglad.connections import billing
+
+result = billing.list_invoices(arguments={"limit": 10})
+```
+
+Before provider I/O, the runtime rechecks the connection identity, active
+catalog revision, schema hash, operation hash, and admission status. An
+unadmitted operation or stale catalog/schema/operation pin fails closed. The
+bridge also validates `arguments` against `inputSchema`, enforces the declared
+call/byte/wall-time budget, and validates the normalized result against
+`outputSchema` when it was declared.
+
 ## Terminal command DAGs
 
 The only profile-v1 terminal effect is an approval-bound command DAG proposal.
@@ -735,7 +807,7 @@ Declare it on a code call:
 ```yaml
 with:
   fg:
-    # resource and runtime omitted
+    # resource and entrypoint omitted
     terminal:
       kind: command-dag
       connections:
@@ -884,16 +956,106 @@ proposal = command_dag(publish, title='Publish financial data')
 only against the authoritative executable run; command execution verifies the
 persisted byte length and SHA-256 digest before any Space-file mutation.
 
+### Pinned MCP command proposals
+
+An MCP terminal connection declares its commands explicitly rather than using
+connector metadata. The command declaration has the same pinned identity shape
+as an MCP read. `outputSchema` remains optional; it is not required to propose
+the command.
+
+```yaml
+with:
+  fg:
+    # resource and entrypoint omitted
+    terminal:
+      kind: command-dag
+      connections:
+        - connectionId: dsrc_billing
+          as: billing
+          connector: mcp
+          commands:
+            - name: create_invoice
+              operationId: invoices.create
+              toolName: create_invoice
+              catalogRevisionId: mcrv_billing_v1
+              schemaHash: cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+              operationHash: dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd
+              inputSchema:
+                type: object
+                additionalProperties: false
+                required: [customer_id, amount]
+                properties:
+                  customer_id: {type: string}
+                  amount: {type: number}
+```
+
+The `as`, `name`, and `operationId` relationship is identical to MCP reads:
+the declaration makes `billing.create_invoice` available, while
+`invoices.create` remains the pinned admitted catalog identity. The constructor
+emits the existing MCP command literal with sealed `connection_id`,
+`operation_id`, `catalog_revision_id`, `schema_hash`, and `operation_hash`.
+
+```python
+from flowglad.commands import command_dag
+from flowglad.connections import billing
+
+proposal = command_dag(
+    billing.create_invoice(
+        arguments={"customer_id": "cus_reviewed", "amount": 19.95}
+    ),
+    title="Create reviewed invoice",
+    reasoning_summary="Propose the pinned MCP invoice creation operation.",
+)
+```
+
+MCP reads and MCP command constructors accept `arguments={...}` only. Flattened
+kwargs are rejected so business arguments cannot collide with the reserved
+command envelope or pinned identity fields. `command_file_name` is the sole
+additional keyword for a command constructor and only changes its generated
+node filename; construction remains an approval-bound proposal and never
+dispatches the provider.
+
 ```python
 from flowglad.commands import command, command_dag
 ```
 
-The helper assigns each node's JSON filename and zero-based position, supplies
-an empty edge list, and returns an ordinary JSON mapping. The executor owns the
-workflow-run association, so scripts do not provide producer identity.
-`ordering_edge` and
-`data_edge` accept command declarations directly for multi-node DAGs, so source
-code does not repeat filenames. The
+The helper assigns each node's JSON filename and zero-based position,
+materializes explicit and inferred edges, and returns an ordinary JSON mapping.
+The executor owns the workflow-run association, so scripts do not provide
+producer identity.
+Every command declaration has an immutable `output` namespace. Passing a prior
+command output as a later command's top-level input infers the corresponding
+data edge:
+
+```python
+from flowglad.commands import command_dag, publish_flowglad_files
+from flowglad.connections import gmail
+
+publish = publish_flowglad_files(files=["report.pdf"])
+draft = gmail.create_gmail_draft(
+    to=["recipient@example.com"],
+    subject="Report",
+    attachment_file_ids=[file.file_id for file in publish.output.flowglad_files],
+)
+proposal = command_dag(
+    publish,
+    draft,
+    title="Publish and attach report",
+    reasoning_summary="Attach the newly published report.",
+)
+```
+
+The SDK treats the comprehension as a symbolic projection of every published
+file's canonical ID and binds that projection to `attachment_file_ids`; the
+unresolved target value is not serialized into the draft's `commandData`.
+Each symbolic item in `publish.output.flowglad_files` exposes `file_id`,
+`storage_path`, `file_name`, and nullable `content_type`. The canonical-ID
+projection shown above is the supported collection projection for command
+inputs.
+Use `source.output["provider-field"]` when an output field is not a valid
+Python attribute name. `ordering_edge` and `data_edge` continue to accept
+command declarations directly; use explicit `data_edge` for dotted or indexed
+target paths. In every form, source code does not repeat filenames. The
 [executor code ABI](./CODE_ABI.md) defines the complete
 constructor signatures and validation boundary.
 
@@ -914,6 +1076,7 @@ compiler derives the minimum Flowglad sidecar grants mechanically:
 - produced artifact → `artifact.write`
 - authenticated connection action → `authenticated-read.exact`
 - declared Page → `page.read.exact`
+- declared MCP read → `mcp.read.exact`
 - terminal declaration → `terminal-command-dag.construct`
 
 Changing a catalog call or `fg` declaration changes the derived grants and the
@@ -945,8 +1108,8 @@ activate a revision; activation fails closed unless the matching executor
 version is available and the persisted bundle, closure, and digests match
 exactly. Runtime routing is a separate, default-off feature-gated decision.
 
-A different OWS revision, profile URI, catalog function version, extension
-version, or compiler version is incompatible by default. Flowglad does not
+A different OWS revision, profile URI, catalog function version, or compiler
+version is incompatible by default. Flowglad does not
 silently translate or reinterpret it; author and publish a document accepted by
 the available compiler.
 
@@ -972,8 +1135,8 @@ Diagnostics use JSON Pointer-like paths into the submitted document. Validation
 has three distinct levels:
 
 1. The official OWS SDK checks OWS schema and DSL validity.
-2. The Flowglad compiler checks profile support, inference-model support,
-   security declarations, artifacts, and terminal topology.
+2. The Flowglad compiler checks profile support, security declarations,
+   artifacts, and terminal topology, then seals Flowglad-owned inference policy.
 3. Publication resolves organization-scoped code resources, verifies exact
    bytes/manifests, and statically checks selected Python entrypoint
    declarations before storing the immutable revision.
@@ -987,9 +1150,17 @@ standalone executor, host, and gated application-boundary test suites.
 - [Yooz: code → inference → code](./yooz-bounded-document-number.ows.yaml)
 - [Mock Bank: browser agent → PDF artifact → code](./mock-bank-browser-statement.ows.yaml)
 - [TODO Page: exact Page read → edit command DAG](./page-todo-update.ows.yaml)
+- [MCP: pinned admitted read → pinned command DAG](./mcp-ows-v1.ows.yaml)
 
 The examples are validated with the official OWS 1.0.3 schema and the Flowglad
 compiler and generate the standalone executor's committed canonical bundles.
 The invoice-reconciliation example exercises task injection, scoped connection
 actions, artifact production and consumption, and command-DAG edges through a
 complete accounts-payable operation in the standalone CLI test harness.
+
+### M1 boundary
+
+M1 provides compiler, executor, host, and internal-chat support for the pinned
+MCP declarations above. Public `ows_authoring.list_connection_capabilities`
+and `ows_authoring.get_connection_capability` are Milestone 2 tools and must
+not be added by M1.
