@@ -1,4 +1,4 @@
 interface:
   display_name: "Author Flowglad OWS"
   short_description: "Compose validated Flowglad automations"
-  default_prompt: "Use $author-flowglad-ows to compose a Flowglad OWS program from verified Skills and other capabilities."
+  default_prompt: "Use $author-flowglad-ows to compose and validate a current Flowglad OWS automation."

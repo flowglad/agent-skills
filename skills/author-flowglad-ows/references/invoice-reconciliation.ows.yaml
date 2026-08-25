@@ -1,3 +1,4 @@
+# Generated from `flowglad/provisioning-agent@53a6e5f3c888c08b5c564dff9c76adfaf05f8cd3` (`packages/workflow-compiler/examples/invoice-reconciliation.ows.yaml`). Do not edit this exported file directly.
 document:
   dsl: '1.0.3'
   namespace: flowglad-evals
@@ -10,12 +11,6 @@ document:
   metadata:
     fg:
       profile: https://flowglad.com/ows/profiles/automation/v1
-      requiredExtensions:
-        - https://flowglad.com/ows/extensions/capabilities/v1
-        - https://flowglad.com/ows/extensions/runtime-profile/v1
-        - https://flowglad.com/ows/extensions/exact-authentication/v1
-        - https://flowglad.com/ows/extensions/artifacts/v1
-        - https://flowglad.com/ows/extensions/terminal-command-dag/v1
 
 use:
   catalogs:
@@ -49,13 +44,8 @@ do:
         fg:
           resource:
             kind: space-file
-            spaceId: spc_eval_invoice_reconciliation
             path: invoice_reconciliation_ows_v1.py
           entrypoint: prepare_reconciliation
-          runtime:
-            language: python
-            version: '3.11'
-            memoryMb: 128
           exactAuthentication:
             connections:
               - connectionId: dsrc_ap_ledger
@@ -131,13 +121,8 @@ do:
         fg:
           resource:
             kind: space-file
-            spaceId: spc_eval_invoice_reconciliation
             path: invoice_reconciliation_ows_v1.py
           entrypoint: build_reconciliation_dag
-          runtime:
-            language: python
-            version: '3.11'
-            memoryMb: 128
           consumes:
             - reconciliation-context
             - review-note

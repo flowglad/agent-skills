@@ -5,15 +5,11 @@ Use a `skill-revision` resource when a reusable Flowglad Skill contains source t
 ## Resolve the exact resource
 
 1. Use `skills.list` to discover visible Skills.
-2. Use `skills.get` to inspect the selected Skill's active or verified revisions, package files, stable CLI entrypoints, and verification diagnostics.
-3. Select an exact revision that has completed verification and is accessible to the Automation's Space.
-4. Resolve all four values required by the OWS code task:
-   - Stable `skillId`.
-   - Immutable `revisionId`.
-   - Exact Python module `path` within the revision, such as `scripts/reconcile.py`.
-   - Selected Python function name, used as `with.fg.entrypoint`.
+2. Use `skills.get` to inspect active or verified revisions, package file metadata, and verification diagnostics.
+3. Select an exact verified revision accessible to the Automation's Space.
+4. Resolve the immutable `revisionId`, exact Python module `path`, and selected public function name.
 
-Stable Skill CLI entrypoint IDs are lifecycle metadata and do not select OWS source. Do not assume a CLI entrypoint name equals the selected OWS function name. Resolve the module path and function name from the exact locally authored or retrieved revision, or leave the dependency unresolved. OWS validation and publication must inspect the exact pinned bytes before compatibility is proven.
+Flowglad derives the parent Skill from `revisionId`; do not author a redundant `skillId`. Stable CLI entrypoint IDs are lifecycle metadata and do not select OWS source.
 
 ## Resource shape
 
@@ -23,39 +19,17 @@ with:
   fg:
     resource:
       kind: skill-revision
-      skillId: skl_exact
       revisionId: skr_exact
       path: scripts/reconcile.py
     entrypoint: reconcile
-    runtime:
-      language: python
-      version: '3.11'
-      memoryMb: 128
     consumes: []
     produces: []
 ```
 
-The resource `path` selects an immutable Python file from the verified revision. The separate `entrypoint` field selects one admitted top-level function inside that file. Flowglad derives and verifies the revision manifest and selected file digests internally. A Skill CLI entrypoint declaration may point at the same script, but its stable ID does not participate in OWS execution.
+Do not add `runtime`. The compiler seals Python 3.11 and the memory limit. Publication resolves the exact revision, derives the parent Skill and manifest, verifies access, and statically validates the selected function against the task's inputs and artifacts.
 
 ## Compatibility boundary
 
-Flowglad Skill verification executes the source as a native-Python CLI with positional string arguments and stdout checks. OWS publication instead statically validates the selected function declaration against `references/CODE_ABI.md`. A revision can therefore be verified as a Skill while remaining invalid for a particular OWS code task.
+Skill verification and OWS publication are separate gates. Require publication validation to confirm that the revision is verified, the path belongs to it, the named public function is admitted, and its injected artifact parameters exactly match `consumes` and `produces`.
 
-Require the OWS compiler and publication resolver to confirm:
-
-- The revision is verified and its manifest can be resolved internally.
-- The selected module path belongs to that revision.
-- The source contains the named public top-level admitted function.
-- Its artifact parameters exactly match `consumes` and `produces` aliases.
-- The function's admitted inputs and return value match the OWS task schemas.
-
-## Missing capability
-
-When no compatible Skill exists:
-
-1. Use `author-flowglad-skill` if available.
-2. State that the package must support both `native-python` `cli-v1` verification and the OWS code ABI.
-3. Wait for an exact verified revision.
-4. Resume OWS authoring with the resolved identities.
-
-Use direct `space-file` code only when it is intentionally automation-specific, the Skill lifecycle is unavailable, or the user explicitly requests it. Direct code still follows `references/CODE_ABI.md`. Its source is live: each run resolves and snapshots the current bytes once and records the calculated digest internally.
+When no compatible Skill exists, use `author-flowglad-skill` if available, wait for an exact verified revision, then resume OWS authoring. Use direct `space-file` code only when it is intentionally automation-specific, the Skill lifecycle is unavailable, or the user explicitly requests it.

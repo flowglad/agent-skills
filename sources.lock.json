@@ -1,0 +1,41 @@
+{
+  "files": {
+    "skills/author-flowglad-ows/references/AUTHORING.md": {
+      "exportedSha256": "09d34aceac19f2c17d409ac26a6aa9ba7ed3c9c7297ea429dd96fb1c54ae4edd",
+      "sourcePath": "packages/workflow-compiler/AUTHORING.md",
+      "sourceSha256": "9852f91d49125f14e9a8942497ebde9ff5b91735884c746005ff843b1f2f2ff3"
+    },
+    "skills/author-flowglad-ows/references/CODE_ABI.md": {
+      "exportedSha256": "988a2dda541b85a5e6fd829e7eea7c3bb5400045392bc8badb4ea95dacd293ed",
+      "sourcePath": "packages/workflow-executor/CODE_ABI.md",
+      "sourceSha256": "4dd9d93793ce3d4901c58739747cb5e3d2ea351666bf1d5a699bd38e161916f3"
+    },
+    "skills/author-flowglad-ows/references/invoice-reconciliation.ows.yaml": {
+      "exportedSha256": "abd2c81fac461c4511fa8c838c7db5464d78191e0fd3aaab2903baa127f628eb",
+      "sourcePath": "packages/workflow-compiler/examples/invoice-reconciliation.ows.yaml",
+      "sourceSha256": "0fedd1003536fb20de53ee57d5e9c32723709acd8f0c8281243d7460bb3370d0"
+    },
+    "skills/author-flowglad-ows/references/mcp-ows-v1.ows.yaml": {
+      "exportedSha256": "fe4381da6f53dd0bca43981b726a81a525d47cc8f76f134513f012f4c8f1727d",
+      "sourcePath": "packages/workflow-compiler/examples/mcp-ows-v1.ows.yaml",
+      "sourceSha256": "52a03360d1352dedde335f954d3319a4b4aa79aa1f012ecfed9ceaa56bd3109b"
+    },
+    "skills/author-flowglad-ows/references/mock-bank-browser-statement.ows.yaml": {
+      "exportedSha256": "e57d4455bae71c793ba0840bc65eca9cd3d61ce64b984d92a5dbb89580cf274c",
+      "sourcePath": "packages/workflow-compiler/examples/mock-bank-browser-statement.ows.yaml",
+      "sourceSha256": "31e0da1a006297a70144ffcb8478774f501566b50bd039bdb61aa37e3caf38ac"
+    },
+    "skills/author-flowglad-ows/references/page-todo-update.ows.yaml": {
+      "exportedSha256": "5efc6f3f94d8efef45d33ffc049d9ff2acf485651e7aeffd6a343976aa21fb9a",
+      "sourcePath": "packages/workflow-compiler/examples/page-todo-update.ows.yaml",
+      "sourceSha256": "40231fd59cf2c15a2f2b7db0fa23960651a5c9a1335043c84639519ddf1db810"
+    },
+    "skills/author-flowglad-ows/references/yooz-bounded-document-number.ows.yaml": {
+      "exportedSha256": "a9aefc3fead02b6d01b1ff36c37539a58cb2e92862b0c29a345ca0acea72acd1",
+      "sourcePath": "packages/workflow-compiler/examples/yooz-bounded-document-number.ows.yaml",
+      "sourceSha256": "72e3469532dc271f6edd84e0472973a7656f4f4071b09eb600bdd58da1f4e9e9"
+    }
+  },
+  "sourceCommit": "53a6e5f3c888c08b5c564dff9c76adfaf05f8cd3",
+  "sourceRepository": "flowglad/provisioning-agent"
+}

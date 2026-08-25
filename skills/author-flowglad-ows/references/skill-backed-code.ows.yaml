@@ -35,14 +35,9 @@ do:
         fg:
           resource:
             kind: skill-revision
-            skillId: skl_replace_me
             revisionId: skr_replace_me
             path: scripts/main.py
-          entrypoint: process_value
-          runtime:
-            language: python
-            version: '3.11'
-            memoryMb: 128
+          entrypoint: transform
           consumes: []
           produces: []
       timeout:
