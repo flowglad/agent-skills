@@ -12,10 +12,8 @@ import sys
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
-AUTHORING_DESTINATION = "skills/author-flowglad-ows/references/AUTHORING.md"
 CODE_ABI_DESTINATION = "skills/author-flowglad-ows/references/CODE_ABI.md"
 SOURCE_MAPPINGS = {
-    AUTHORING_DESTINATION: "packages/workflow-compiler/AUTHORING.md",
     CODE_ABI_DESTINATION: "packages/workflow-executor/CODE_ABI.md",
     "skills/author-flowglad-ows/references/invoice-reconciliation.ows.yaml": (
         "packages/workflow-compiler/examples/invoice-reconciliation.ows.yaml"
@@ -72,15 +70,7 @@ def generated_notice(commit: str, source_path: str, comment: str = ">") -> str:
 
 def export_bytes(source_path: str, source: bytes, commit: str) -> bytes:
     text = source.decode("utf-8")
-    if source_path == "packages/workflow-compiler/AUTHORING.md":
-        text = text.replace(
-            "[`@fg/workflow-compiler`](./src/contracts.ts)", "`@fg/workflow-compiler`"
-        )
-        text = text.replace("(../workflow-executor/CODE_ABI.md)", "(./CODE_ABI.md)")
-        text = text.replace("(./examples/", "(./")
-        title, remainder = text.split("\n", 1)
-        text = f"{title}\n\n{generated_notice(commit, source_path)}\n\n{remainder.lstrip()}"
-    elif source_path == "packages/workflow-executor/CODE_ABI.md":
+    if source_path == "packages/workflow-executor/CODE_ABI.md":
         title, remainder = text.split("\n", 1)
         text = f"{title}\n\n{generated_notice(commit, source_path)}\n\n{remainder.lstrip()}"
     elif source_path.endswith(".ows.yaml"):

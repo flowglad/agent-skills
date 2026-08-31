@@ -1,10 +1,5 @@
 {
   "files": {
-    "skills/author-flowglad-ows/references/AUTHORING.md": {
-      "exportedSha256": "09d34aceac19f2c17d409ac26a6aa9ba7ed3c9c7297ea429dd96fb1c54ae4edd",
-      "sourcePath": "packages/workflow-compiler/AUTHORING.md",
-      "sourceSha256": "9852f91d49125f14e9a8942497ebde9ff5b91735884c746005ff843b1f2f2ff3"
-    },
     "skills/author-flowglad-ows/references/CODE_ABI.md": {
       "exportedSha256": "988a2dda541b85a5e6fd829e7eea7c3bb5400045392bc8badb4ea95dacd293ed",
       "sourcePath": "packages/workflow-executor/CODE_ABI.md",

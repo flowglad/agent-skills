@@ -26,7 +26,8 @@ alone does not authorize publication, activation, or execution.
 
 ## Validation and source sync
 
-The compiler guide, executor ABI, and canonical examples are exported from the private
+The OWS skill fetches the authoritative compiler guide from the deployed Flowglad MCP server at
+authoring time. The executor ABI and canonical examples remain exported from the private
 `flowglad/provisioning-agent` repository with source hashes recorded in `sources.lock.json`.
 
 From a checkout with both repositories available:
@@ -39,7 +40,8 @@ python3 scripts/validate_repository.py
 python3 -B -m unittest discover -s skills/author-flowglad-skill/tests -v
 ```
 
-The public CI validates skill metadata, current exported OWS authoring shapes, source-lock
-integrity, the OWS-native starter package, and the package-payload helper. The cross-repository
-`--check --validate-compiler` additionally proves that generated references match an exact
-provisioning-agent commit and that every bundled OWS document passes that checkout's compiler.
+The public CI validates skill metadata, live-spec routing instructions, current exported OWS
+authoring shapes, source-lock integrity, the OWS-native starter package, and the package-payload
+helper. The cross-repository `--check --validate-compiler` additionally proves that generated
+references match an exact provisioning-agent commit and that every bundled OWS document passes
+that checkout's compiler.
