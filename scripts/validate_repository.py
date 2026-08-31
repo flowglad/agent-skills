@@ -12,6 +12,8 @@ import yaml
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+OWS_SKILL_ROOT = REPOSITORY_ROOT / "skills/author-flowglad-ows"
+LIVE_AUTHORING_SPEC_TOOL = "automations.get_authoring_spec"
 PROFILE_URI = "https://flowglad.com/ows/profiles/automation/v1"
 CATALOG_URI = "https://flowglad.com/ows/catalogs/automation/v1"
 ALLOWED_CALLS = {
@@ -63,6 +65,14 @@ def validate_skill(skill_root: Path) -> None:
         fail(f"{skill_root}/agents/openai.yaml: short_description must be 25-64 characters")
     if f"${skill_root.name}" not in interface.get("default_prompt", ""):
         fail(f"{skill_root}/agents/openai.yaml: default_prompt must mention the skill")
+
+    if skill_root == OWS_SKILL_ROOT:
+        if (skill_root / "references/AUTHORING.md").exists():
+            fail(f"{skill_root}: must not bundle a snapshot of the live authoring specification")
+        if LIVE_AUTHORING_SPEC_TOOL not in text:
+            fail(f"{skill_path}: must route authors through {LIVE_AUTHORING_SPEC_TOOL}")
+        if "references/AUTHORING.md" in text:
+            fail(f"{skill_path}: refers to the removed authoring-spec snapshot")
 
 
 def validate_code_extension(path: Path, task_id: str, extension: dict[str, object]) -> None:
@@ -155,7 +165,7 @@ def main() -> int:
         for skill_root in sorted((REPOSITORY_ROOT / "skills").iterdir()):
             if skill_root.is_dir():
                 validate_skill(skill_root)
-        for path in sorted((REPOSITORY_ROOT / "skills/author-flowglad-ows").rglob("*.ows.yaml")):
+        for path in sorted(OWS_SKILL_ROOT.rglob("*.ows.yaml")):
             validate_workflow(path)
         validate_starter_package()
         validate_source_lock()
