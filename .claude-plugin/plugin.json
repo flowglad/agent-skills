@@ -1,0 +1,12 @@
+{
+  "name": "flowglad",
+  "version": "1.0.0",
+  "description": "Author and revise reusable Flowglad Skills and Open Workflow Specification automations. Requires a Flowglad account and a separately configured Flowglad MCP connection.",
+  "author": {
+    "name": "Flowglad Inc.",
+    "url": "https://www.flowglad.com"
+  },
+  "homepage": "https://www.flowglad.com",
+  "repository": "https://github.com/flowglad/agent-skills",
+  "license": "UNLICENSED"
+}
