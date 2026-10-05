@@ -9,6 +9,24 @@ automations.
 npx skills add flowglad/agent-skills
 ```
 
+### Claude Code plugin
+
+The repository root is also a Claude plugin. Its manifest is
+`.claude-plugin/plugin.json`, and Claude discovers both authoring skills in `skills/`.
+The plugin requires a Flowglad account and a separately configured Flowglad MCP
+connection. It does not bundle an MCP server or configure a connection automatically.
+
+To validate and load a local checkout from its parent directory:
+
+```bash
+claude plugin validate ./agent-skills
+claude --plugin-dir ./agent-skills
+```
+
+The skills are available as `/flowglad:author-flowglad-skill` and
+`/flowglad:author-flowglad-ows`. The manifest records `UNLICENSED`; no open-source
+license has been granted for this repository.
+
 ## Available skills
 
 | Skill | Description |
