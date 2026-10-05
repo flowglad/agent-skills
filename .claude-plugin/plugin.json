@@ -1,6 +1,6 @@
 {
   "name": "flowglad",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Author and revise reusable Flowglad Skills and Open Workflow Specification automations. Requires a Flowglad account and a separately configured Flowglad MCP connection.",
   "author": {
     "name": "Flowglad Inc.",
