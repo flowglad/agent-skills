@@ -1,6 +1,6 @@
 # Preparing a Skill for OWS code calls
 
-Flowglad verifies new OWS-native Skill packages through the same selected-function ABI used by published Automations.
+Flowglad verifies new OWS-native Skill packages through the same selected-function ABI used by published Automations. Read the bundled [CODE_ABI.md](CODE_ABI.md) for artifact collections, connection actions, SDK reads, command DAGs, and fixture validation.
 
 ## Source requirements
 
@@ -15,7 +15,7 @@ def reconcile(invoice_id: Input) -> dict[str, str]:
     return {"invoice_id": invoice_id}
 ```
 
-Supported injected parameter annotations are `Input`, `TaskInput`, `ArtifactInput`, and `ArtifactOutput`. Do not use defaults, variadic parameters, other decorators, or async functions. Return one JSON-compatible value. Send diagnostics to stderr by raising a safe exception; do not print a result.
+Supported injected parameter annotations are `Input`, `TaskInput`, `ArtifactInput`, `ArtifactCollectionInput`, and `ArtifactOutput`. Do not use defaults, variadic parameters, other decorators, or async functions. Return one JSON-compatible value. Send diagnostics to stderr by raising a safe exception; do not print a result.
 
 Do not add `argparse`, `sys.argv`, an `if __name__ == "__main__"` block, positional-argument metadata, or a stdout CLI adapter. Those markers select or conflict with the legacy verification profile.
 

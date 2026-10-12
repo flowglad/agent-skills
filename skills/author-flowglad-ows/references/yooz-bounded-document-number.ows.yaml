@@ -1,4 +1,4 @@
-# Generated from `flowglad/provisioning-agent@53a6e5f3c888c08b5c564dff9c76adfaf05f8cd3` (`packages/workflow-compiler/examples/yooz-bounded-document-number.ows.yaml`). Do not edit this exported file directly.
+# Generated from `flowglad/provisioning-agent@8267a6c9cdcd190993a413db554395b76708d7a0` (`packages/workflow-compiler/examples/yooz-bounded-document-number.ows.yaml`). Do not edit this exported file directly.
 document:
   dsl: '1.0.3'
   namespace: flowglad-evals
@@ -56,8 +56,9 @@ do:
       with:
         fg:
           resource:
-            kind: space-file
-            path: yooz_ows_v1.py
+            kind: skill-revision
+            revisionId: skr_example_yooz_bounded_document_v1
+            path: scripts/yooz_ows_v1.py
           entrypoint: normalize_invoice_context
       timeout:
         after: PT10S
@@ -110,8 +111,9 @@ do:
       with:
         fg:
           resource:
-            kind: space-file
-            path: yooz_ows_v1.py
+            kind: skill-revision
+            revisionId: skr_example_yooz_bounded_document_v1
+            path: scripts/yooz_ows_v1.py
           entrypoint: build_attachment_dag
           terminal:
             kind: command-dag

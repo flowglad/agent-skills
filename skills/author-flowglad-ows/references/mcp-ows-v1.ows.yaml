@@ -1,4 +1,4 @@
-# Generated from `flowglad/provisioning-agent@53a6e5f3c888c08b5c564dff9c76adfaf05f8cd3` (`packages/workflow-compiler/examples/mcp-ows-v1.ows.yaml`). Do not edit this exported file directly.
+# Generated from `flowglad/provisioning-agent@8267a6c9cdcd190993a413db554395b76708d7a0` (`packages/workflow-compiler/examples/mcp-ows-v1.ows.yaml`). Do not edit this exported file directly.
 document:
   dsl: '1.0.3'
   namespace: flowglad-evals
@@ -14,7 +14,7 @@ document:
       requiredExtensions:
         - https://flowglad.com/ows/extensions/capabilities/v1
         - https://flowglad.com/ows/extensions/runtime-profile/v1
-        - https://flowglad.com/ows/extensions/mcp-access/v1
+        - https://flowglad.com/ows/extensions/exact-authentication/v1
         - https://flowglad.com/ows/extensions/terminal-command-dag/v1
 
 use:
@@ -38,15 +38,18 @@ do:
       with:
         fg:
           resource:
-            kind: space-file
-            path: mcp_ows_v1.py
+            kind: skill-revision
+            revisionId: skr_example_mcp_ows_v1
+            path: scripts/mcp_ows_v1.py
           entrypoint: propose_mcp_command
-          mcpAccess:
+          exactAuthentication:
             connections:
               - connectionId: dsrc_mcp_billing
                 as: billing
-                reads:
-                  - name: list_invoices
+                connector: mcp
+                actions:
+                  - kind: mcp
+                    name: list_invoices
                     operationId: invoices.list
                     toolName: list_invoices
                     catalogRevisionId: mcrv_billing_v1
@@ -60,11 +63,14 @@ do:
                     outputSchema:
                       type: object
                       additionalProperties: false
-                      required: [items]
+                      required: [content, structuredContent]
                       properties:
-                        items:
-                          type: array
-                          items: {type: object}
+                        content: {type: array, items: {type: object}}
+                        structuredContent:
+                          type: object
+                          required: [items]
+                          properties:
+                            items: {type: array, items: {type: object}}
             limits:
               maxCalls: 1
               maxResponseBytes: 16384

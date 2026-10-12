@@ -84,6 +84,30 @@ class BuildPackagePayloadTest(unittest.TestCase):
         payload = json.loads(result.stdout)
         self.assertFalse(any("__pycache__" in item["path"] for item in payload["files"]))
 
+    def test_excludes_hidden_members_from_both_transports(self) -> None:
+        for transport in ("inline", "staged"):
+            with self.subTest(transport=transport), tempfile.TemporaryDirectory() as directory:
+                package = self.prepare_starter(Path(directory))
+                for relative in (
+                    "files/.credentials",
+                    "scripts/.private/token.json",
+                    "references/.draft.md",
+                    ".local/settings.json",
+                ):
+                    hidden = package / relative
+                    hidden.parent.mkdir(parents=True, exist_ok=True)
+                    hidden.write_text("synthetic private data", encoding="utf-8")
+                visible = package / "files" / "settings.json"
+                visible.write_text("{}", encoding="utf-8")
+
+                result = self.run_builder(package, transport)
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            files = {item["path"] for item in json.loads(result.stdout)["files"]}
+            self.assertIn("files/settings.json", files)
+            self.assertIn("scripts/main.py", files)
+            self.assertFalse(any(part.startswith(".") for path in files for part in path.split("/")))
+
     def test_rejects_package_without_metadata(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             package = self.prepare_starter(Path(directory))

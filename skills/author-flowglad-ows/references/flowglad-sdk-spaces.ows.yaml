@@ -1,0 +1,64 @@
+# Generated from `flowglad/provisioning-agent@8267a6c9cdcd190993a413db554395b76708d7a0` (`packages/workflow-compiler/examples/flowglad-sdk-spaces.ows.yaml`). Do not edit this exported file directly.
+document:
+  dsl: '1.0.3'
+  namespace: flowglad-evals
+  name: flowglad-sdk-spaces
+  version: '1.0.0'
+  title: Discover visible Flowglad Spaces
+  summary: >-
+    Canonical OWS program that lists the Spaces visible to an automation and
+    reads the first result through the versioned Flowglad SDK.
+  metadata:
+    fg:
+      profile: https://flowglad.com/ows/profiles/automation/v1
+      requiredExtensions:
+        - https://flowglad.com/ows/extensions/capabilities/v1
+        - https://flowglad.com/ows/extensions/runtime-profile/v1
+        - https://flowglad.com/ows/extensions/flowglad-access/v1
+
+use:
+  catalogs:
+    flowglad:
+      endpoint:
+        uri: https://flowglad.com/ows/catalogs/automation/v1
+
+input:
+  schema:
+    format: jsonschema:2020-12
+    document:
+      type: object
+      additionalProperties: false
+
+do:
+  - discover-spaces:
+      input:
+        from: '${ . }'
+      call: code:1.0.0@flowglad
+      with:
+        fg:
+          resource:
+            kind: space-file
+            path: scripts/flowglad_sdk_spaces_ows_v1.py
+          entrypoint: discover_spaces
+          flowgladAccess:
+            operations:
+              - spaces.list.v1
+              - spaces.get.v1
+            limits:
+              maxCalls: 2
+          terminal:
+            kind: command-dag
+      timeout:
+        after: PT10S
+      output:
+        schema:
+          format: jsonschema:2020-12
+          document:
+            type: object
+
+output:
+  as: '${ . }'
+  schema:
+    format: jsonschema:2020-12
+    document:
+      type: object

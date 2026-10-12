@@ -95,7 +95,7 @@ Scripts send their declared result to stdout and diagnostics to stderr. Make the
 
 ## Verification stages
 
-Flowglad verification runs automatically after candidate creation:
+Normal immediate submission starts verification automatically after candidate creation. Explicit deferred development submission seals bytes without starting publication verification; follow [MCP_LIFECYCLE.md](MCP_LIFECYCLE.md) before normal use. Verification stages are:
 
 1. `structure`: package paths, roles, limits, metadata, instructions, and asset projection.
 2. `syntax`: Python compilation.

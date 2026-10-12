@@ -1,0 +1,102 @@
+# Generated from `flowglad/provisioning-agent@8267a6c9cdcd190993a413db554395b76708d7a0` (`packages/workflow-compiler/examples/agent-review.ows.yaml`). Do not edit this exported file directly.
+document:
+  dsl: '1.0.3'
+  namespace: flowglad-evals
+  name: agent-review
+  version: '1.0.0'
+  metadata:
+    fg:
+      profile: https://flowglad.com/ows/profiles/automation/v1
+use:
+  catalogs:
+    flowglad:
+      endpoint:
+        uri: https://flowglad.com/ows/catalogs/automation/v1
+input:
+  schema:
+    format: jsonschema:2020-12
+    document:
+      type: object
+      additionalProperties: false
+      required: [instructions]
+      properties:
+        instructions: {type: string}
+do:
+  - review:
+      call: agent:1.0.0@flowglad
+      with:
+        fg:
+          profile:
+            id: workspace-agent
+            revision: 1
+            instructions: Review the supplied instructions and return a concise summary.
+            maxSteps: 20
+            maxResultBytes: 65536
+          exactAuthentication:
+            connections:
+              - connectionId: dsrc_example_invoices
+                as: invoices
+                connector: yooz
+                actions:
+                  - name: get_invoice
+                    method: GET
+                    pathTemplate: /invoices/{{invoice_id}}
+                    parameterSchema:
+                      type: object
+                      additionalProperties: false
+                      required: [invoice_id]
+                      properties:
+                        invoice_id: {type: string}
+                    resultSchema: {type: object}
+            limits:
+              maxCalls: 5
+              maxResponseBytes: 65536
+              maxCumulativeResponseBytes: 262144
+              maxWallTimeMs: 30000
+      input:
+        from: '${ { query: .instructions } }'
+      timeout:
+        after: PT5M
+      output:
+        schema:
+          format: jsonschema:2020-12
+          document:
+            type: object
+            required: [summary]
+            properties:
+              summary: {type: string}
+      export:
+        as: '${ $context + { review: . } }'
+  - finalize-review:
+      call: code:1.0.0@flowglad
+      with:
+        fg:
+          resource:
+            kind: skill-revision
+            revisionId: skr_example_agent_review_v1
+            path: scripts/agent_review_ows_v1.py
+          entrypoint: build_review_dag
+          terminal:
+            kind: command-dag
+      input:
+        from: '${ $context.review }'
+      timeout:
+        after: PT30S
+      output:
+        schema:
+          format: jsonschema:2020-12
+          document:
+            type: object
+            additionalProperties: false
+            required: [title, reasoningSummary, nodes, edges]
+            properties:
+              title: {type: string}
+              reasoningSummary: {type: string}
+              nodes: {type: array, items: {type: object}}
+              edges: {type: array, items: {type: object}}
+
+output:
+  as: '${ . }'
+  schema:
+    format: jsonschema:2020-12
+    document: {type: object}
