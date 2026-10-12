@@ -10,21 +10,23 @@ document:
         - https://flowglad.com/ows/extensions/capabilities/v1
         - https://flowglad.com/ows/extensions/runtime-profile/v1
 
+      triggers:
+        - id: on-demand
+          manual:
+            schema:
+              format: jsonschema:2020-12
+              document:
+                type: object
+                additionalProperties: false
+                required: [value]
+                properties:
+                  value: {type: string}
+
 use:
   catalogs:
     flowglad:
       endpoint:
         uri: https://flowglad.com/ows/catalogs/automation/v1
-
-input:
-  schema:
-    format: jsonschema:2020-12
-    document:
-      type: object
-      additionalProperties: false
-      required: [value]
-      properties:
-        value: {type: string}
 
 do:
   - process-value:
@@ -52,6 +54,34 @@ do:
             properties:
               result: {type: string}
 
+  - decide-actions:
+      input:
+        from: '${ . }'
+      call: code:1.0.0@flowglad
+      with:
+        fg:
+          resource:
+            kind: skill-revision
+            revisionId: skr_replace_me
+            path: scripts/main.py
+          entrypoint: decide_actions
+          terminal:
+            kind: command-dag
+      timeout:
+        after: PT30S
+      output:
+        schema:
+          format: jsonschema:2020-12
+          document:
+            type: object
+            additionalProperties: false
+            required: [title, reasoningSummary, nodes, edges]
+            properties:
+              title: {type: string}
+              reasoningSummary: {type: string}
+              nodes: {type: array, items: {type: object}}
+              edges: {type: array, items: {type: object}}
+
 output:
   as: '${ . }'
   schema:
@@ -59,6 +89,9 @@ output:
     document:
       type: object
       additionalProperties: false
-      required: [result]
+      required: [title, reasoningSummary, nodes, edges]
       properties:
-        result: {type: string}
+        title: {type: string}
+        reasoningSummary: {type: string}
+        nodes: {type: array, items: {type: object}}
+        edges: {type: array, items: {type: object}}

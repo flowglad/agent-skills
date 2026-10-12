@@ -14,12 +14,30 @@ import sys
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 CODE_ABI_DESTINATION = "skills/author-flowglad-ows/references/CODE_ABI.md"
 SOURCE_MAPPINGS = {
+    "skills/author-flowglad-ows/references/AUTHORING.md": (
+        "packages/workflow-compiler/AUTHORING.md"
+    ),
+    "skills/author-flowglad-ows/references/AGENT_CALLS.md": (
+        "packages/workflow-compiler/AGENT_CALLS.md"
+    ),
+    "skills/author-flowglad-skill/references/CODE_ABI.md": (
+        "packages/workflow-executor/CODE_ABI.md"
+    ),
+    "skills/author-flowglad-ows/references/agent-review.ows.yaml": (
+        "packages/workflow-compiler/examples/agent-review.ows.yaml"
+    ),
+    "skills/author-flowglad-ows/references/yaml-triggers.ows.yaml": (
+        "packages/workflow-compiler/examples/yaml-triggers.ows.yaml"
+    ),
+    "skills/author-flowglad-ows/references/flowglad-sdk-spaces.ows.yaml": (
+        "packages/workflow-compiler/examples/flowglad-sdk-spaces.ows.yaml"
+    ),
     CODE_ABI_DESTINATION: "packages/workflow-executor/CODE_ABI.md",
     "skills/author-flowglad-ows/references/invoice-reconciliation.ows.yaml": (
         "packages/workflow-compiler/examples/invoice-reconciliation.ows.yaml"
     ),
     "skills/author-flowglad-ows/references/mock-bank-browser-statement.ows.yaml": (
-        "packages/workflow-compiler/examples/mock-bank-browser-statement.ows.yaml"
+        "packages/workflow-compiler/examples/browser-statement.ows.yaml"
     ),
     "skills/author-flowglad-ows/references/page-todo-update.ows.yaml": (
         "packages/workflow-compiler/examples/page-todo-update.ows.yaml"
@@ -33,11 +51,42 @@ SOURCE_MAPPINGS = {
 }
 COMPILER_SCRIPT = """
 import { compileFlowgladOwsWorkflow } from './packages/workflow-compiler/src/index.ts'
+import { executablePackageFixture } from './packages/shared/src/ows-runtime/executable-package-contracts.test-fixtures.ts'
+import { canonicalExecutableBundleManifest, executableBundleManifestHash } from './packages/shared/src/executable-bundle-manifest.ts'
 let failed = false
 for (const file of process.argv.slice(1)) {
   const source = Bun.YAML.parse(await Bun.file(file).text())
-  const result = compileFlowgladOwsWorkflow(source)
-  console.log(`${file}: ${result.ok ? 'PASS' : 'FAIL'}`)
+  // Private placeholders require a synthetic host resolution for shape checks.
+  // Keep authored selectors intact; this is not verification or publication.
+  const packages = []
+  for (const wrapper of source.do ?? []) {
+    for (const task of Object.values(wrapper)) {
+      const resource = task.with?.fg?.resource
+      if (resource?.kind !== 'automation-file-bundle-revision') continue
+      const fixture = executablePackageFixture('automation')
+      const entrypoint = { ...fixture.descriptor.entrypoint, key: resource.entrypoint }
+      const manifest = canonicalExecutableBundleManifest({
+        ...fixture.manifest, entrypoints: [entrypoint],
+      })
+      packages.push({
+        ...fixture, manifest,
+        source: { ...fixture.source, revisionId: resource.revisionId },
+        descriptor: {
+          ...fixture.descriptor,
+          revisionId: resource.revisionId,
+          entrypointKey: resource.entrypoint,
+          entrypoint,
+          files: manifest.files,
+          manifestDigest: executableBundleManifestHash(manifest),
+        },
+      })
+    }
+  }
+  const hasPrivateResource = packages.length > 0
+  const result = compileFlowgladOwsWorkflow(source, hasPrivateResource
+    ? { resolvedExecutablePackages: packages }
+    : {})
+  console.log(`${file}: ${result.ok ? 'PASS' : 'FAIL'}${hasPrivateResource ? ' (synthetic package resolution; shape only)' : ''}`)
   if (!result.ok) {
     failed = true
     console.error(JSON.stringify(result.diagnostics, null, 2))
@@ -70,11 +119,20 @@ def generated_notice(commit: str, source_path: str, comment: str = ">") -> str:
 
 def export_bytes(source_path: str, source: bytes, commit: str) -> bytes:
     text = source.decode("utf-8")
-    if source_path == "packages/workflow-executor/CODE_ABI.md":
+    if source_path.endswith(".md"):
         title, remainder = text.split("\n", 1)
         text = f"{title}\n\n{generated_notice(commit, source_path)}\n\n{remainder.lstrip()}"
     elif source_path.endswith(".ows.yaml"):
         text = f"# {generated_notice(commit, source_path, comment='').strip()}\n{text}"
+    # Keep exported documentation navigable without access to the private repository.
+    text = text.replace("../workflow-executor/CODE_ABI.md", "CODE_ABI.md")
+    text = text.replace("../workflow-compiler/AUTHORING.md", "AUTHORING.md")
+    text = text.replace("./examples/browser-statement.ows.yaml", "mock-bank-browser-statement.ows.yaml")
+    text = text.replace("./examples/", "")
+    text = text.replace(
+        "./src/contracts.ts",
+        f"https://github.com/flowglad/provisioning-agent/blob/{commit}/packages/workflow-compiler/src/contracts.ts",
+    )
     return text.encode("utf-8")
 
 
@@ -85,6 +143,10 @@ def expected_exports(source_root: Path) -> tuple[dict[str, bytes], bytes]:
     for destination, source_path in SOURCE_MAPPINGS.items():
         source = (source_root / source_path).read_bytes()
         exported = export_bytes(source_path, source, commit)
+        if destination.startswith("skills/author-flowglad-skill/"):
+            exported = exported.replace(
+                b"(AUTHORING.md)", b"(../../author-flowglad-ows/references/AUTHORING.md)"
+            )
         exports[destination] = exported
         lock_files[destination] = {
             "sourcePath": source_path,
@@ -102,7 +164,7 @@ def expected_exports(source_root: Path) -> tuple[dict[str, bytes], bytes]:
 def validate_with_compiler(source_root: Path) -> None:
     ows_root = REPOSITORY_ROOT / "skills/author-flowglad-ows"
     workflows = [
-        ows_root / "assets/starter.ows.yaml",
+        *sorted((ows_root / "assets").glob("*.ows.yaml")),
         *sorted((ows_root / "references").glob("*.ows.yaml")),
     ]
     subprocess.run(

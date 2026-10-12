@@ -76,7 +76,7 @@ def is_ignored(relative: str) -> bool:
     parts = relative.split("/")
     basename = parts[-1]
     return (
-        any(part in IGNORED_DIRECTORIES for part in parts)
+        any(part.startswith(".") or part in IGNORED_DIRECTORIES for part in parts)
         or basename in IGNORED_BASENAMES
         or basename.endswith(IGNORED_SUFFIXES)
     )

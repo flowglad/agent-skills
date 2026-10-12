@@ -6,7 +6,7 @@ Use a `skill-revision` resource when a reusable Flowglad Skill contains source t
 
 1. Use `skills.list` to discover visible Skills.
 2. Use `skills.get` to inspect active or verified revisions, package file metadata, and verification diagnostics.
-3. Select an exact verified revision accessible to the Automation's Space.
+3. Select an exact verified revision in the Automation's organization. Skill authorization is organization-scoped; the Automation and runtime retain their separate Space authorization.
 4. Resolve the immutable `revisionId`, exact Python module `path`, and selected public function name.
 
 Flowglad derives the parent Skill from `revisionId`; do not author a redundant `skillId`. Stable CLI entrypoint IDs are lifecycle metadata and do not select OWS source.
@@ -32,4 +32,18 @@ Do not add `runtime`. The compiler seals Python 3.11 and the memory limit. Publi
 
 Skill verification and OWS publication are separate gates. Require publication validation to confirm that the revision is verified, the path belongs to it, the named public function is admitted, and its injected artifact parameters exactly match `consumes` and `produces`.
 
-When no compatible Skill exists, use `author-flowglad-skill` if available, wait for an exact verified revision, then resume OWS authoring. Use direct `space-file` code only when it is intentionally automation-specific, the Skill lifecycle is unavailable, or the user explicitly requests it.
+For intentionally reusable computation, use `author-flowglad-skill` when no compatible
+Skill exists and the user has requested remote submission. Resolve the resulting exact
+verified revision before normal publication. If the first revision is rejected, repair
+the same Skill using the newest rejected base; do not create a duplicate.
+
+New computation private to one Automation uses its Automation-owned executable bundle
+when the capability is advertised. Read **Automation-private bundle entrypoints** in
+[AUTHORING.md](AUTHORING.md). Unavailable or failed private authoring does not permit
+creating a Skill as fallback. Preserve `space-file` only for existing Automation
+histories that already use it.
+
+An explicitly requested deferred development workflow may select sealed unpublished
+content through manual execution. It requires `development: true`, explicit activation,
+and later package publication plus normal workflow revision/activation. It cannot run
+from schedules or events.

@@ -1,4 +1,4 @@
-# Generated from `flowglad/provisioning-agent@53a6e5f3c888c08b5c564dff9c76adfaf05f8cd3` (`packages/workflow-compiler/examples/invoice-reconciliation.ows.yaml`). Do not edit this exported file directly.
+# Generated from `flowglad/provisioning-agent@8267a6c9cdcd190993a413db554395b76708d7a0` (`packages/workflow-compiler/examples/invoice-reconciliation.ows.yaml`). Do not edit this exported file directly.
 document:
   dsl: '1.0.3'
   namespace: flowglad-evals
@@ -43,8 +43,9 @@ do:
       with:
         fg:
           resource:
-            kind: space-file
-            path: invoice_reconciliation_ows_v1.py
+            kind: skill-revision
+            revisionId: skr_example_invoice_reconciliation_v1
+            path: scripts/invoice_reconciliation_ows_v1.py
           entrypoint: prepare_reconciliation
           exactAuthentication:
             connections:
@@ -120,8 +121,9 @@ do:
       with:
         fg:
           resource:
-            kind: space-file
-            path: invoice_reconciliation_ows_v1.py
+            kind: skill-revision
+            revisionId: skr_example_invoice_reconciliation_v1
+            path: scripts/invoice_reconciliation_ows_v1.py
           entrypoint: build_reconciliation_dag
           consumes:
             - reconciliation-context

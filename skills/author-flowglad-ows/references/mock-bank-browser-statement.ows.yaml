@@ -1,10 +1,10 @@
-# Generated from `flowglad/provisioning-agent@53a6e5f3c888c08b5c564dff9c76adfaf05f8cd3` (`packages/workflow-compiler/examples/mock-bank-browser-statement.ows.yaml`). Do not edit this exported file directly.
+# Generated from `flowglad/provisioning-agent@8267a6c9cdcd190993a413db554395b76708d7a0` (`packages/workflow-compiler/examples/browser-statement.ows.yaml`). Do not edit this exported file directly.
 document:
   dsl: '1.0.3'
   namespace: flowglad-evals
-  name: mock-bank-browser-statement
+  name: browser-statement
   version: '1.0.0'
-  title: Mock Bank browser statement pipeline
+  title: Browser statement pipeline
   summary: >-
     Canonical OWS program for browser-agent to PDF artifact to code dataflow.
     The PDF declaration is a Flowglad artifact sidecar; OWS owns the structured
@@ -35,15 +35,15 @@ do:
       with:
         fg:
           profile:
-            id: mock_bank_browser_profile
-            connectionId: dsrc_mock_bank
+            id: statement_browser_profile
+            connectionId: dsrc_statement
             instructions: Download the May sample statement as a PDF.
             maxSteps: 20
           produces:
             - name: statement-pdf
               mediaType: application/pdf
               maxBytes: 10000
-              fileName: flowglad-bank-statement.pdf
+              fileName: sample-statement.pdf
       timeout:
         after: PT60S
       output:
@@ -66,8 +66,8 @@ do:
         fg:
           resource:
             kind: skill-revision
-            revisionId: skr_eval_mock_bank_statement_v1
-            path: scripts/verify_mock_bank_ows_v1.py
+            revisionId: skr_eval_browser_statement_v1
+            path: scripts/verify_statement_ows_v1.py
           entrypoint: verify_statement
           consumes:
             - statement-pdf

@@ -1,0 +1,56 @@
+document:
+  dsl: '1.0.3'
+  namespace: replace-me
+  name: replace-me
+  version: '1.0.0'
+  metadata:
+    fg:
+      profile: https://flowglad.com/ows/profiles/automation/v1
+
+use:
+  catalogs:
+    flowglad:
+      endpoint:
+        uri: https://flowglad.com/ows/catalogs/automation/v1
+
+do:
+  - decide-actions:
+      input:
+        from: '${ . }'
+      call: code:1.0.0@flowglad
+      with:
+        fg:
+          resource:
+            kind: automation-file-bundle-revision
+            revisionId: fbr_replace_with_verified_revision
+            entrypoint: decide-actions
+          terminal:
+            kind: command-dag
+      timeout:
+        after: PT30S
+      output:
+        schema:
+          format: jsonschema:2020-12
+          document:
+            type: object
+            additionalProperties: false
+            required: [title, reasoningSummary, nodes, edges]
+            properties:
+              title: { type: string }
+              reasoningSummary: { type: string }
+              nodes: { type: array, items: { type: object } }
+              edges: { type: array, items: { type: object } }
+
+output:
+  as: '${ . }'
+  schema:
+    format: jsonschema:2020-12
+    document:
+      type: object
+      additionalProperties: false
+      required: [title, reasoningSummary, nodes, edges]
+      properties:
+        title: { type: string }
+        reasoningSummary: { type: string }
+        nodes: { type: array, items: { type: object } }
+        edges: { type: array, items: { type: object } }

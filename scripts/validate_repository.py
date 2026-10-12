@@ -13,10 +13,10 @@ import yaml
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 OWS_SKILL_ROOT = REPOSITORY_ROOT / "skills/author-flowglad-ows"
-LIVE_AUTHORING_SPEC_TOOL = "automations.get_authoring_spec"
 PROFILE_URI = "https://flowglad.com/ows/profiles/automation/v1"
 CATALOG_URI = "https://flowglad.com/ows/catalogs/automation/v1"
 ALLOWED_CALLS = {
+    "agent:1.0.0@flowglad",
     "browser-agent:1.0.0@flowglad",
     "code:1.0.0@flowglad",
     "inference:1.0.0@flowglad",
@@ -66,13 +66,11 @@ def validate_skill(skill_root: Path) -> None:
     if f"${skill_root.name}" not in interface.get("default_prompt", ""):
         fail(f"{skill_root}/agents/openai.yaml: default_prompt must mention the skill")
 
+    # Bundled instruction references must exist in the package and be source-locked.
     if skill_root == OWS_SKILL_ROOT:
-        if (skill_root / "references/AUTHORING.md").exists():
-            fail(f"{skill_root}: must not bundle a snapshot of the live authoring specification")
-        if LIVE_AUTHORING_SPEC_TOOL not in text:
-            fail(f"{skill_path}: must route authors through {LIVE_AUTHORING_SPEC_TOOL}")
-        if "references/AUTHORING.md" in text:
-            fail(f"{skill_path}: refers to the removed authoring-spec snapshot")
+        for reference in ("AUTHORING.md", "CODE_ABI.md", "AGENT_CALLS.md"):
+            if not (skill_root / "references" / reference).is_file():
+                fail(f"{skill_root}: missing bundled {reference}")
 
 
 def validate_code_extension(path: Path, task_id: str, extension: dict[str, object]) -> None:
@@ -84,8 +82,17 @@ def validate_code_extension(path: Path, task_id: str, extension: dict[str, objec
     if "skillId" in resource or "spaceId" in resource:
         fail(f"{path}: {task_id} repeats a compiler-derived resource identity")
     kind = resource.get("kind")
-    if kind == "skill-revision" and not resource.get("revisionId"):
+    if (
+        kind in {"skill-revision", "automation-file-bundle-revision"}
+        and not resource.get("revisionId")
+    ):
         fail(f"{path}: {task_id} has no revisionId")
+    if kind == "automation-file-bundle-revision":
+        if not resource.get("entrypoint"):
+            fail(f"{path}: {task_id} has no private entrypoint key")
+        if "path" in resource or "entrypoint" in extension or "automationId" in resource:
+            fail(f"{path}: {task_id} repeats a private compiler-derived binding")
+        return
     if kind not in {"skill-revision", "space-file"}:
         fail(f"{path}: {task_id} has unsupported resource kind {kind!r}")
     if not resource.get("path") or not extension.get("entrypoint"):
@@ -106,7 +113,11 @@ def validate_workflow(path: Path) -> None:
     tasks = workflow.get("do")
     if not isinstance(tasks, list) or not tasks:
         fail(f"{path}: expected a sequential non-empty do list")
-    for task_wrapper in tasks:
+    if path.parent == OWS_SKILL_ROOT / "assets" and "input" in workflow:
+        fail(f"{path}: current starters must declare payloads through YAML triggers")
+    terminal_tasks = []
+    private_revisions = set()
+    for task_index, task_wrapper in enumerate(tasks):
         if not isinstance(task_wrapper, dict) or len(task_wrapper) != 1:
             fail(f"{path}: each task must have one task ID")
         task_id, task = next(iter(task_wrapper.items()))
@@ -115,6 +126,13 @@ def validate_workflow(path: Path) -> None:
         if not task.get("timeout", {}).get("after"):
             fail(f"{path}: {task_id} has no explicit timeout")
         extension = task.get("with", {}).get("fg", {})
+        if extension.get("terminal") is not None:
+            terminal_tasks.append(task_index)
+            if task.get("call") != "code:1.0.0@flowglad" or "if" in task:
+                fail(f"{path}: terminal must be an unconditional code task")
+        resource = extension.get("resource", {})
+        if resource.get("kind") == "automation-file-bundle-revision":
+            private_revisions.add(resource.get("revisionId"))
         if task["call"].startswith("code:"):
             validate_code_extension(path, task_id, extension)
         elif task["call"].startswith("inference:"):
@@ -122,13 +140,18 @@ def validate_workflow(path: Path) -> None:
             authored = FORBIDDEN_INFERENCE_FIELDS.intersection(profile)
             if authored:
                 fail(f"{path}: {task_id} authors inference policy fields {sorted(authored)}")
-        elif task["call"].startswith("browser-agent:"):
+        elif task["call"].startswith(("browser-agent:", "agent:")):
             profile = extension.get("profile", {})
             authored = FORBIDDEN_BROWSER_FIELDS.intersection(profile)
             if authored:
                 fail(f"{path}: {task_id} uses retired browser fields {sorted(authored)}")
             if not profile.get("instructions"):
                 fail(f"{path}: {task_id} has no browser instructions")
+    if terminal_tasks != [len(tasks) - 1]:
+        fail(f"{path}: expected exactly one final terminal code task")
+    if len(private_revisions) > 1:
+        fail(f"{path}: private code tasks must select one exact bundle revision")
+
 
 
 def validate_starter_package() -> None:
@@ -154,6 +177,14 @@ def validate_source_lock() -> None:
     lock = json.loads((REPOSITORY_ROOT / "sources.lock.json").read_text(encoding="utf-8"))
     if lock.get("sourceRepository") != "flowglad/provisioning-agent":
         fail("sources.lock.json has the wrong source repository")
+    required_references = {
+        "skills/author-flowglad-ows/references/AUTHORING.md",
+        "skills/author-flowglad-ows/references/CODE_ABI.md",
+        "skills/author-flowglad-ows/references/AGENT_CALLS.md",
+        "skills/author-flowglad-skill/references/CODE_ABI.md",
+    }
+    if not required_references.issubset(lock.get("files", {})):
+        fail("sources.lock.json must pin every bundled authoring contract")
     for path, record in lock.get("files", {}).items():
         actual = sha256(REPOSITORY_ROOT / path)
         if actual != record.get("exportedSha256"):
